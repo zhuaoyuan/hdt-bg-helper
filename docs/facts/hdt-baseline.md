@@ -64,7 +64,8 @@
 
 - 单人模式：`Hearthstone Deck Tracker/LogReader/Handlers/TagChangeActions.cs` 中 `OnBattlegroundsSetupChange`（第 199 行起），某个标签由 1 变为 0 时置 `game.IsBattlegroundsCombatPhase = true`，然后调用 `BobsBuddyInvoker.GetInstance(gameId, turn).StartCombat()`（第 220–221 行）。
   - 会用 `GameEntity` 的 `TURN` 过滤掉假战斗：战斗应出现在购物阶段之后的 `TURN` 上（第 206–218 行）。
-- 双人模式：`OnBattlegroundsCombatSetupChange`（第 226 行起），1→0 时先 `game.SnapshotBattlegroundsBoardState()`，再 `StartCombat()`（第 237–243 行）。
+- 双人模式：`OnBattlegroundsCombatSetupChange`（第 226 行起），1→0 时调用 `StartCombat()`（第 243–247 行）。
+  - 同一个 1→0 分支里，单人模式、以及对手英雄已被修改的双人模式，都会先调用 `game.SnapshotBattlegroundsBoardState()`（第 237–241 行）。这是 HDT 记录对手场面的功能，不是 Bob's Buddy 的输入快照。
 - 此外，`TagChangeActions.cs` 与 `PowerHandler.cs` 在战斗过程中多处调用 `BobsBuddyInvoker` 的更新方法（见 [`bobsbuddy-simulator-input.md`](bobsbuddy-simulator-input.md) 的"战斗中揭示"部分）。
 
 ## 可见性限制
