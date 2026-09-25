@@ -12,6 +12,9 @@ lib/
 *.exe
 *.pdb
 
+# Spike outputs derived from closed-source assemblies (e.g. API dumps); keep local only
+spikes/**/out/
+
 # Collected game data (personal, may contain player identifiers)
 data/
 *.sqlite
