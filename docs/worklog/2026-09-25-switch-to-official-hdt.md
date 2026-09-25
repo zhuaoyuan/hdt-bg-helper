@@ -34,3 +34,15 @@
   - Hearthstone 在 `C:\Program Files (x86)\Hearthstone\Logs\` 下按会话保留日志，本机有 6 个会话目录，每个的 Power 日志 26–400 MB。
   - `BobsBuddyInvoker.Output` 是公开属性（`BobsBuddyInvoker.cs:135`），但类本身是 `internal`。
 - 方案第 8 节有 3 项需要所有者确认，其中用反射读 HDT 内部字段不在 ADR-0006 明确覆盖的范围内。
+
+## 追加：方案批准并实现诊断记录插件
+
+- 所有者批准方案，第 8 节三项都按建议确认：反射只读 HDT 内部字段属于 ADR-0006 的合理用途；所有玩家（含所有者本人）的 BattleTag 都匿名化；记录目录 `%APPDATA%\HearthstoneDeckTracker\BgHelperDiag\`。
+- 实现了 `spikes/hdt-diag-logger/`：插件（`HdtDiagLogger`）、离线测试（`DumpTest`）、检查脚本（`tools/check_capture.py`）、构建部署脚本（`build.ps1`）。和方案的偏差记在方案的"实现记录"一节。
+- 写代码时核实的 HDT 行为（基线 `509bb0b9`）：
+  - `ActionList.Add` 按调用方法所在的类型认定插件（`API/ActionList.cs`），所以事件注册必须直接写在插件类里；插件回调超过 2,000 ms 时 HDT 只打警告（`PluginManager.MaxPluginExecutionTime`）。
+  - `GameEvents.OnGameStart` 由 LoadingScreen 日志的 `Gameplay.Start` 行触发（`LoadingScreenHandler.cs:142–152`），不是 Power.log 的 `CREATE_GAME`。
+  - HDT 的日志处理在 async 循环的 `await` 之后调用（`HearthWatcher/LogWatcher.cs:49–69`），[推断] 在 UI 线程上。插件会记下线程 id 来核实。
+  - 日志文件名里的时间戳是下一次启动的时刻（`Log.cs:34–58`，已写进 `facts/local-environment.md`）。
+- 离线测试结果（BB 1.78.1）：7 对 7 的 `Input` 有 210 个节点、约 37 KB，首次序列化 12–22 ms，之后约 1 ms；序列化不改变状态；`Output` 约 23 KB。测试中修了两个问题：伤害分布被 2,000 条的上限截断；两个字的中文玩家名没被匿名化。
+- 插件已部署到插件目录，等所有者重启 HDT、启用并打 1 局。
