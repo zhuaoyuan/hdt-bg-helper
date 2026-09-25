@@ -26,6 +26,7 @@
 - `InternalsVisibleTo` 只给了 `BobsBuddy.Test` 和 `BobsBuddy.Benchmark`。
 - `BobsBuddy.Common.dll` 只有两个公开类型：`CardData`（`Id`、`Text`）和 `KnownBaconCards`（`Cards` 列表）。
 - 注意：官方 zip 当前是 1.78.8，比本机修改版 HDT 自带的 1.76.0 新。
+- 2026-09-25 所有者换用官方 HDT 1.58.3.8362，它自带的是 BobsBuddy.dll **1.78.1.0**（`facts/local-environment.md`），也比 zip 里的 1.78.8 旧。所以 zip 的最新版本不等于用户实际运行的版本。本文还没有在 1.78.1 上跑过 ApiDump 和 MinimalSim。
 
 ## 核心类型（均为 `public`，1.76.0）
 

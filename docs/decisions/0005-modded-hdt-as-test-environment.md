@@ -1,6 +1,6 @@
 # ADR-0005：以本机安装的修改版 HDT 作为实测与验证环境
 
-- **状态：** accepted（所有者 2026-09-25 对话确认）
+- **状态：** superseded by [ADR-0007](0007-official-hdt-as-test-environment.md)（2026-09-25，所有者已换用官方版 HDT）；原状态 accepted（所有者 2026-09-25 对话确认）
 - **日期：** 2026-09-25
 - **相关：** Q-002、Q-004、Q-010、P2-T5，`facts/local-environment.md`
 

@@ -10,6 +10,8 @@
 分析脚本：spikes/hdt-log-analysis/（原始输出在 out/，不入库）
 ```
 
+> **适用范围（2026-09-25 补充）：** 本文所有实测都基于团子版的日志。所有者当天已换用官方 HDT 1.58.3（ADR-0007），第 5 节只作为历史日志的来源说明。官方版日志没有第 5.2 节的额外行，随从后面也没有 CardId 行，第 1.2 节的重复行折叠可能会出现。官方版产生带模拟的日志后，需要复核第 2–4 节。
+
 文中 `Invoker:N` 指基线 `Hearthstone Deck Tracker/BobsBuddy/BobsBuddyInvoker.cs` 第 N 行；日志位置写作 `<文件名>:<行号>`，文件都在 `%APPDATA%\HearthstoneDeckTracker\Logs\`。日志摘录中的对手英雄名、中文卡名已替换为占位符。
 
 ## 1. 日志从哪来
