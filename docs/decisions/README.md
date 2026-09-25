@@ -31,3 +31,4 @@
 | [ADR-0002](0002-bobsbuddy-as-primary-simulator.md) | 以 Bob's Buddy 作为首选战斗模拟器 | proposed |
 | [ADR-0003](0003-strength-metric-definition.md) | 以"本回合战力分位"作为核心战力指标 | accepted |
 | [ADR-0004](0004-capture-light-compute-async.md) | 插件采集保持轻量，原始数据只追加，计算异步化 | proposed |
+| [ADR-0005](0005-modded-hdt-as-test-environment.md) | 以本机安装的修改版 HDT 作为实测与验证环境 | accepted |
