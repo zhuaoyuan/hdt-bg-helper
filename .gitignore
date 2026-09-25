@@ -1,0 +1,28 @@
+# Build output
+bin/
+obj/
+*.user
+*.suo
+.vs/
+packages/
+
+# Third-party binaries referenced from the local HDT install; never commit them
+lib/
+*.dll
+*.exe
+*.pdb
+
+# Collected game data (personal, may contain player identifiers)
+data/
+*.sqlite
+*.db
+*.parquet
+
+# Python / analysis
+__pycache__/
+.venv/
+.ipynb_checkpoints/
+
+# OS / editor
+Thumbs.db
+.DS_Store
