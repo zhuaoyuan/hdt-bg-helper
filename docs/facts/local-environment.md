@@ -21,13 +21,15 @@
 
 - `%LOCALAPPDATA%\HearthstoneDeckTracker`（官方 Squirrel 安装器的默认位置）不存在。
 - **这不是官方构建。** 日志 `hdt_log_1789998252.txt` 第 122 行，在 `BobsBuddyInvoker.RunSimulation` 的 "Simulation Input" 段落中有一行 `【团子专属】模拟对战，对手：<英雄名>`。上游源码（基线 `509bb0b9`）里搜不到"团子"或"模拟对战"。
-- 与源码基线的差距：安装版本 1.58.1，源码基线 1.58.3。修改版具体改了什么还不知道（Q-010）。
+- 窗口标题为 `Hearthstone Deck Tracker-团子版`，是第三方中文修改版。修改内容的分析见 [`hdt-log-simulation-input.md`](hdt-log-simulation-input.md)。
+- 与源码基线的差距：安装版本 1.58.1，源码基线 1.58.3。
+- **现有日志都不是 1.58.1 产生的。** exe 的修改时间是 2026-09-23 09:52；上面那份日志第 2 行写的是 `HDT: 1.57.12.0`。截至核实时，没有任何日志来自当前安装的 1.58.1。
 
 ## HDT 数据目录
 
 `%APPDATA%\HearthstoneDeckTracker`（即 `C:\Users\Administrator\AppData\Roaming\HearthstoneDeckTracker`）：
 
-- `Logs/`：`hdt_log_<unix 时间戳>.txt`，每次启动一个文件。核实时最大的一份是 `hdt_log_1789998252.txt`（2026-09-21，655,722 字节），其中匹配 `BobsBuddy|Simulation|BB:` 的有 4,873 行，包含 `SetupInputPlayer` 的计数器输出和完整的 `----- Simulation Input -----` 段落。
+- `Logs/`：`hdt_log_<unix 时间戳>.txt`，每次启动一个文件。核实时共 26 个文件。HDT 只保留最近 2 天加之前 25 个日志，超出的会自动删除（见 [`hdt-log-simulation-input.md`](hdt-log-simulation-input.md)），需要长期留存的日志要另外备份。核实时最大的一份是 `hdt_log_1789998252.txt`（2026-09-21，655,722 字节），其中匹配 `BobsBuddy|Simulation|BB:` 的有 4,873 行，包含 `SetupInputPlayer` 的计数器输出和完整的 `----- Simulation Input -----` 段落。
 - `BgsLastGames.xml`（682,753 字节，2026-09-21）：酒馆战棋历史对局记录，结构还没分析。
 - `Plugins/`：核实时为空。
 - 其他：`config.xml`、`DeckStats.xml`、`Replays/` 等。

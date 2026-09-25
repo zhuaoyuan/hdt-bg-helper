@@ -31,7 +31,9 @@
 | 文件 | 内容 |
 | --- | --- |
 | [`hdt-baseline.md`](hdt-baseline.md) | HDT 版本、构建、插件接口、事件与战斗时机 |
-| [`bobsbuddy-simulator-input.md`](bobsbuddy-simulator-input.md) | Bob's Buddy 调用方式与输入数据清单（P1 主交付物，草稿） |
+| [`bobsbuddy-simulator-input.md`](bobsbuddy-simulator-input.md) | Bob's Buddy 调用方式、输入数据清单、触发时序、对手可见性（P1 主交付物；源码分析已完成，实测待 P1-T3） |
+| [`bobsbuddy-minion-enchantments.md`](bobsbuddy-minion-enchantments.md) | 随从附着附魔 → BB `Minion` 字段映射全表（上一份的附表） |
 | [`local-environment.md`](local-environment.md) | 所有者本机实际运行的 HDT 版本、数据目录、可用工具 |
 | [`bobsbuddy-public-api.md`](bobsbuddy-public-api.md) | `BobsBuddy.dll` 公开 API、独立调用实测、版本差异 |
+| [`hdt-log-simulation-input.md`](hdt-log-simulation-input.md) | HDT 日志中模拟 Input/Output 段落的内容与缺口、本机修改版 HDT 的改动 |
 | [`licensing.md`](licensing.md) | HDT / Bob's Buddy 许可与 HearthSim 条款原文、官方表态 |
