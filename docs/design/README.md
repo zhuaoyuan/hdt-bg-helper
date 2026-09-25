@@ -23,4 +23,4 @@
 
 | 方案 | 任务 | 状态 |
 | --- | --- | --- |
-| [P1-diagnostic-logger](P1-diagnostic-logger.md) | P1-T3 / P1-T5 实测依据，P2-T2 / P2-T3 原型 | review |
+| [P1-diagnostic-logger](P1-diagnostic-logger.md) | P1-T3 / P1-T5 实测依据，P2-T2 / P2-T3 原型 | approved |

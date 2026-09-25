@@ -23,3 +23,14 @@
 - 新增：`decisions/0007-official-hdt-as-test-environment.md`、本日志。
 - 更新：`decisions/0005-…`（状态行）、`decisions/README.md`、`research/open-questions.md`、`facts/local-environment.md`、`facts/hdt-log-simulation-input.md`、`facts/bobsbuddy-public-api.md`、`status.md`。
 - 待办：官方版产生带模拟的日志后，复核 `facts/hdt-log-simulation-input.md` 第 2–4 节。
+
+## 追加：不保留历史日志；诊断记录插件方案
+
+- 所有者决定不特意保留团子版历史日志和对战记录，理由是版本已和当前不同。状态文档中的备份提醒已删除。
+- 所有者提议：先做一个尽可能完整记录对局数据的辅助插件，带着它打几局，再根据记录分析数据清单和采集工具的待办。agent 同意，因为 Q-002、Q-006、Q-007 本来就只能靠真实对局实测。
+- 写了 [`design/P1-diagnostic-logger.md`](../design/P1-diagnostic-logger.md)（状态 `review`）。插件记录四类数据：原始 Power.log 行、开战和战后的全实体快照、通过反射读取的 HDT 模拟输入与结果、环境版本。
+- 写方案时核实的事实：
+  - 官方版自带 `Newtonsoft.Json.dll` 13.0.3 和 `System.Text.Json.dll` 8.0。
+  - Hearthstone 在 `C:\Program Files (x86)\Hearthstone\Logs\` 下按会话保留日志，本机有 6 个会话目录，每个的 Power 日志 26–400 MB。
+  - `BobsBuddyInvoker.Output` 是公开属性（`BobsBuddyInvoker.cs:135`），但类本身是 `internal`。
+- 方案第 8 节有 3 项需要所有者确认，其中用反射读 HDT 内部字段不在 ADR-0006 明确覆盖的范围内。

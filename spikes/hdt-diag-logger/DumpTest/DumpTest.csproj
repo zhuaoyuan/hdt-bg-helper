@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Offline check of ReflectionDumper / Anonymizer outside HDT. HDT assemblies are copied to bin (never committed). -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net472</TargetFramework>
+    <PlatformTarget>x64</PlatformTarget>
+    <LangVersion>10</LangVersion>
+    <Nullable>disable</Nullable>
+    <HdtDir Condition="'$(HdtDir)' == ''">$(LOCALAPPDATA)\HearthstoneDeckTracker\app-1.58.3</HdtDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\HdtDiagLogger\HdtDiagLogger.csproj" />
+    <Reference Include="HearthstoneDeckTracker"><HintPath>$(HdtDir)\HearthstoneDeckTracker.exe</HintPath></Reference>
+    <Reference Include="BobsBuddy"><HintPath>$(HdtDir)\BobsBuddy.dll</HintPath></Reference>
+    <Reference Include="BobsBuddy.Common"><HintPath>$(HdtDir)\BobsBuddy.Common.dll</HintPath></Reference>
+    <Reference Include="HearthDb"><HintPath>$(HdtDir)\HearthDb.dll</HintPath></Reference>
+    <Reference Include="Newtonsoft.Json"><HintPath>$(HdtDir)\Newtonsoft.Json.dll</HintPath></Reference>
+    <Reference Include="netstandard" />
+  </ItemGroup>
+
+</Project>
