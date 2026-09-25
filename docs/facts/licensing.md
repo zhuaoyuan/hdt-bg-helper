@@ -1,6 +1,6 @@
 # HDT 与 Bob's Buddy 的许可和使用条款
 
-> 这份文档回答：HDT 和 `BobsBuddy.dll` 以什么条款提供、官方对插件和 Bob's Buddy 二次使用有过什么表态（Q-003）。这里只列原文事实；能不能接受由所有者判断。
+> 这份文档回答：HDT 和 `BobsBuddy.dll` 以什么条款提供、官方对插件和 Bob's Buddy 二次使用有过什么表态（Q-003）。这里只列原文事实。所有者对风险的接受见 [ADR-0006](../decisions/0006-personal-plugin-use-of-hdt-bobsbuddy.md)。
 
 ```text
 基线：HDT v1.58.3 / 509bb0b9；HearthSim/legal TERMS.md 最后提交 ba1c4dee（2022-10-20）
@@ -42,11 +42,11 @@
 - 表态针对的是"会自己玩酒馆战棋的 agent"。
 - 没有找到官方对"插件调用 `BobsBuddy.dll` 做个人复盘分析"的明确许可或禁止。
 
-## 待所有者判断的点
+## 所有者判断（2026-09-25）
 
-以下是对上述事实的整理，不是法律意见：
+以下不是法律意见，是所有者对上列事实的接受范围，已写入 [ADR-0006](../decisions/0006-personal-plugin-use-of-hdt-bobsbuddy.md)：
 
-1. 本项目只在本机、个人、非商业地使用 HDT 自带的 DLL，**不再分发** `BobsBuddy.dll` 或 HDT 二进制文件。这和 TERMS 第 28 行的"personal, non-commercial use"是否相容？
-2. 插件引用并调用 `BobsBuddy.dll` 的公开 API，算不算 TERMS 第 30 行的"exploit … any portion of the Service"？条款没有明说。社区插件普遍引用 HDT 程序集，官方 wiki 也在教。
-3. 实时对局中显示"战力分位"，和 HDT 自己显示 Bob's Buddy 胜率属于同一类信息吗？还是会被视为"不公平优势"（issue #4509 的判断标准）？
-4. 本项目仓库若公开，不能包含 HDT / Bob's Buddy 的二进制文件或反编译代码（`.gitignore` 已排除 dll / exe）。
+1. 本机、个人、非商业使用 HDT 自带 DLL，且不分发 `BobsBuddy.dll` 或 HDT 二进制文件，与 TERMS 第 28 行相容。
+2. 插件引用并调用 `BobsBuddy.dll` 的公开 API，属于合理用途。
+3. 实时显示战力分位属于合理用途，与 HDT 显示 Bob's Buddy 胜率同类，不按 issue #4509 的"不公平优势"处理。
+4. 仓库可以公开，但不能包含 HDT / Bob's Buddy 的二进制文件或反编译代码。

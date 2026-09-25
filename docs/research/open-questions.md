@@ -11,7 +11,6 @@
 | 编号 | 问题 | 影响 | 验证方式 | 关联 | 状态 |
 | --- | --- | --- | --- | --- | --- |
 | Q-002 | 能否通过反射读取 HDT 内部 `BobsBuddyInvoker._input`，作为对照基准或数据源？稳定性如何？ | 中 | 写原型插件尝试；关注 HDT 源码注释提到的"第三方插件保存/恢复 input" | P1-T2、P2-T5 | open |
-| Q-003 | HDT 自身和 `BobsBuddy.dll` 的许可条款是否允许个人插件引用和调用？ | 高 | 事实已整理到 `facts/licensing.md`（两者均为专有软件；TERMS 只授予个人非商业使用，禁止修改、衍生、再分发；没有针对插件调用 DLL 的明确条款）。**待所有者判断**该文档末尾的 4 个问题 | ADR-0002 | investigating |
 | Q-004 | HDT 日志中"Simulation Input / Output"段落是否足以重建输入？能否作为采集正确性的对照基准？ | 中 | 在真实对局后读取 HDT 日志，对照 `RunSimulation` 中的日志输出代码 | P1-T4 | open |
 | Q-006 | 战斗中揭示的信息（第 5 节列表）插件能否在同一时机拿到？是否需要自行解析日志？ | 高 | P1-T1 梳理触发点；P2 原型实测 | P1-T1、P2-T3 | open |
 | Q-007 | 对手玩家级计数器（如 `NUM_RESOURCES_SPENT_THIS_GAME` 从不下发）有哪些拿不到或只能推算？会让多大比例的快照变成 `partial`？ | 高 | P1-T3 逐字段标注可见性；P2 实测统计 | P1-T3、P2-T6 | open |
@@ -25,4 +24,5 @@
 | 编号 | 问题 | 结论 | 结论位置 |
 | --- | --- | --- | --- |
 | Q-001 | `BobsBuddy.dll` 中 `Input`、`Player`、`Minion`、`SimulationRunner` 等类型是否公开，插件能否自行构造输入并调用模拟？ | 能。核心类型全部 `public`、可直接构造；独立 net472 x64 进程里调用 `SimulateMultiThreaded`，在 1.76.0 和 1.78.8 上都得到符合预期的结果。两个版本间核心 API 只有 `Player.MagnetizeCounter` 一处签名变化（2026-09-25） | `facts/bobsbuddy-public-api.md`、`spikes/bobsbuddy-api/` |
+| Q-003 | HDT 自身和 `BobsBuddy.dll` 的许可条款是否允许个人插件引用和调用？ | 两者均为专有软件，条款只授予个人非商业使用。所有者确认：本机个人非商业使用相容；调用公开 API 与实时显示战力分位均为合理用途；仓库可公开但不得含 HDT/BB 二进制或反编译代码（2026-09-25） | `facts/licensing.md`、ADR-0006、ADR-0002 |
 | Q-005 | 插件构建时如何引用 HDT 和闭源 DLL（安装目录、版本对齐、CI 能否构建）？ | 本地构建已验证：.NET SDK 的 net472 x64 类库以 `Private=false` 引用安装目录的 HDT exe 和 DLL 即可，不需要 Visual Studio。CI：GitHub Releases 只到 v1.55.6，拿不到新版二进制文件，是否需要 CI 由所有者决定。在 HDT 中实际加载留到 P2 原型（2026-09-25） | `facts/hdt-baseline.md` 的"插件加载""插件构建"、`spikes/hdt-plugin-skeleton/` |
