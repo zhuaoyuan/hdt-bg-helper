@@ -178,5 +178,5 @@ HDT 在战斗开始后收到以下信息时更新 `_input` 并调用 `TryRerun()
 - [ ] `GetTrinketFromEntity`、`GetObjectiveFromEntity`、`GetOrderedMinions`、`GetOrderedHandEntities`、`WasHeroPowerActivated`、`GetDeityFromSigil`、`GetResourcesSpentThisGameFromMalorne`
 - [ ] `BattlegroundsUtils.GetAvailableRaces`、`GetBattlegroundsAnomalyDbfId`
 - [ ] `TagChangeActions.cs` / `PowerHandler.cs` 中每个战斗中更新的触发条件
-- [ ] `Input`、`Player`、`Minion` 中 HDT **没有**赋值、但 Bob's Buddy 可能会读的字段（需要检查 DLL，P1-T2）
+- [ ] `Input`、`Player`、`Minion` 中 HDT **没有**赋值、但 Bob's Buddy 可能会读的字段（P1-T2 已导出公开签名，见 [`bobsbuddy-public-api.md`](bobsbuddy-public-api.md)）。已确认的：`Player.DeepBluesCounter`、`Player.AnySpellCounter`、`Player.BackToBackCounter` 在 BB 1.76.0 中是公开可写属性，HDT 源码（基线）里没有任何地方赋值；`BackToBackAtk/Health` 只在战斗中由 `UpdateBackToBackSpellBonus` 赋值（`Invoker:1134–1155`）。`Minion` 的剩余字段还没逐一对照。
 - [ ] 每个字段的采集时机、可见性、版本敏感度标注（P1-T3）

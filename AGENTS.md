@@ -36,7 +36,7 @@
 | `docs/process/` | SDLC 流程与各阶段提示词 | 流程改进时更新 |
 | `docs/worklog/` | 按日期的工作日志 | 只追加 |
 | `src/`、`tests/`、`tools/` | 代码（尚未创建，规划见 `docs/architecture/overview.md`） | 按设计文档实现 |
-| `spikes/` | 为验证可行性写的一次性原型（尚未创建） | 每个原型附 README 说明目的与结论；不作为正式代码依赖 |
+| `spikes/` | 为验证可行性写的一次性原型 | 每个原型附 README 说明目的与结论；不作为正式代码依赖；从闭源 DLL 派生的输出放在 `out/`，不入库 |
 
 ## 5. 外部依赖与参考
 
@@ -60,3 +60,5 @@
 - 系统：Windows 10，默认 Shell 是 **Windows PowerShell 5.1**：不支持 `&&` / `||`，串联命令用 `;` 或 `if ($?) { ... }`。
 - HDT 目标框架：`net472`、`x64`、C# 10。插件需与之匹配（见 `docs/facts/hdt-baseline.md`）。
 - 本项目目录的上级 `C:\projects\github` 本身也是一个（无提交的）git 仓库，本项目有自己独立的 git 仓库，注意 git 命令的工作目录。
+- `dotnet` 不在 PATH 上，用完整路径 `& "C:\Program Files\dotnet\dotnet.exe"`（SDK 8.0.417 / 9.0.200）。没有 `msbuild`、`gh`；查 GitHub 用 `Invoke-RestMethod https://api.github.com/...`（未认证，每小时 60 次）。
+- 本机环境详情（HDT 安装位置、数据目录等）见 `docs/facts/local-environment.md`。

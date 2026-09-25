@@ -33,6 +33,23 @@
 | `OnButtonPress()` | 在"选项 > 追踪器 > 插件"中点击按钮时调用 |
 | `OnUpdate()` | 约每 100ms 调用一次 |
 
+## 插件加载
+
+`Hearthstone Deck Tracker/Plugins/PluginManager.cs`、`PluginWrapper.cs`：
+
+- 安装位置是 `%APPDATA%\HearthstoneDeckTracker\Plugins`（`PluginManager.cs:25`）。启动时 HDT 把它同步到自己工作目录下的 `Plugins`：新增或更新的文件复制过去，源目录里没有的文件和子目录删掉（`PluginManager.cs:79–153`）。直接放进安装目录 `Plugins` 的插件会被删除（`READ THIS.txt` 提示，`PluginManager.cs:60–71`）。
+- 加载方式：对每个 `.dll` 调用 `Assembly.LoadFrom`，把其中非抽象、`public`、实现了 `IPlugin` 的类型用 `Activator.CreateInstance` 实例化（`PluginManager.cs:213–250`）。插件和 HDT 在同一个进程、同一个 AppDomain 里。
+- 拒绝加载：名称为 Reconnector 类的插件（`PluginManager.cs:179–199`），以及任何方法 `DllImport` 了 `iphlpapi` / `lovepapi` 的程序集（`PluginManager.cs:208–223`）。
+- 启用状态保存在 `%APPDATA%\HearthstoneDeckTracker\plugins.xml`（`PluginManager.cs:161, 280–317`）。
+- `OnUpdate()` 由一个约 100 ms 的循环调用（`PluginManager.cs:266–276`）。抛出的异常累计超过 `MaxExceptions = 100` 次时插件被停用（`PluginWrapper.cs:121–129`）。单次 `OnUpdate` 超过 2000 ms 只记警告，停用的代码被注释掉了（`PluginWrapper.cs:131–137`）。
+
+## 插件构建
+
+- 官方 wiki "Creating Plugins"：建一个面向 .NET Framework 4.7.2 的类库，引用 `Hearthstone Deck Tracker.exe`，实现 `Plugins.IPlugin`；HDT 已带的依赖不要随插件分发。
+- 实测（2026-09-25，`spikes/hdt-plugin-skeleton`）：不装 Visual Studio，用 .NET SDK 9.0.200 的 SDK 风格项目就能编译 net472 x64 插件。以 `Private=false` 引用安装目录中的 `HearthstoneDeckTracker.exe`、`BobsBuddy.dll`、`HearthDb.dll`，再加上 `PresentationCore`、`PresentationFramework`、`WindowsBase`、`System.Xaml`、`netstandard` 即可。产物只有插件自身的 DLL。
+- 社区插件 HDT_BGrank（MIT）的做法是把 `HearthstoneDeckTracker.exe`、`HearthMirror.dll` 等二进制文件直接提交到仓库的 `Reference/` 目录（GitHub `IBM5100o/HDT_BGrank`，2026-09-25 查看）。
+- HDT 的 GitHub Releases 最新一版是 v1.55.6（2026-08-13），附件是 `Hearthstone.Deck.Tracker-v1.55.6.zip`；更新的版本（源码 1.58.3）没有发布在 GitHub 上。CI 如果需要 HDT 二进制文件，只能从旧 Release、自行构建 HDT 或其他渠道获取。
+
 ## 公开游戏事件
 
 `Hearthstone Deck Tracker/API/GameEvents.cs` 提供静态 `ActionList` 事件，包括：
@@ -52,9 +69,9 @@
 
 ## 可见性限制
 
-- `BobsBuddyInvoker`（`internal class`）与 `BobsBuddyUtils`（`internal static` 方法）都不对外公开，插件**不能直接调用** HDT 的"实体 → 模拟器输入"转换逻辑。
+- `BobsBuddyInvoker`（`internal class`）与 `BobsBuddyUtils`（`internal static` 方法）都不对外公开，插件**不能直接调用** HDT 的"实体 → 模拟器输入"转换逻辑。但 `BobsBuddy.dll` 本身的类型都是公开的，插件可以自己构造输入并调用模拟（见 [`bobsbuddy-public-api.md`](bobsbuddy-public-api.md)）。
 - `BobsBuddyInvoker.SnapshotBoardState` 里有注释提到"第三方插件在战斗中保存/恢复 input"（`BobsBuddyInvoker.cs:914–916`）。**[推断]** 已有插件通过反射访问 `_input`，这是一条可参考的技术路径（登记为 Q-002）。
 
 ## 许可证
 
-- 仓库根目录下没有找到 LICENSE 文件；`licenses/` 目录里只有第三方组件的许可证。HDT 自身及 `BobsBuddy.dll` 的许可条款还没确认（Q-003）。
+- HDT 和 `BobsBuddy.dll` 都是保留全部权利的专有软件，没有开源许可证。条款原文和官方表态见 [`licensing.md`](licensing.md)。

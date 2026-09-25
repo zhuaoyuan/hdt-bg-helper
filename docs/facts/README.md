@@ -32,3 +32,6 @@
 | --- | --- |
 | [`hdt-baseline.md`](hdt-baseline.md) | HDT 版本、构建、插件接口、事件与战斗时机 |
 | [`bobsbuddy-simulator-input.md`](bobsbuddy-simulator-input.md) | Bob's Buddy 调用方式与输入数据清单（P1 主交付物，草稿） |
+| [`local-environment.md`](local-environment.md) | 所有者本机实际运行的 HDT 版本、数据目录、可用工具 |
+| [`bobsbuddy-public-api.md`](bobsbuddy-public-api.md) | `BobsBuddy.dll` 公开 API、独立调用实测、版本差异 |
+| [`licensing.md`](licensing.md) | HDT / Bob's Buddy 许可与 HearthSim 条款原文、官方表态 |
