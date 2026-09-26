@@ -4,6 +4,8 @@
 
 **状态（2026-09-26）：** 官方 HDT 1.58.3 上 3 局单人、27/27 场战斗验收通过。字段分析见 [`docs/facts/diag-capture-measured.md`](../../docs/facts/diag-capture-measured.md)。分析时只用本场 `2022=0` 及之后的 `hdt_bb`（新对局开头会倒出上一局残留 invoker）。
 
+换一台没有开发环境的电脑继续打、继续记：见 [`docs/process/field-capture.md`](../../docs/process/field-capture.md)。只需拷走本机已部署的 `HdtDiagLogger.dll`，不必在新电脑上编译。
+
 ## 使用
 
 1. 编译并部署（部署前关闭 HDT：HDT 运行时会锁住已加载的插件 DLL）：

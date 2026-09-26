@@ -28,3 +28,28 @@
 - 新增：`docs/facts/diag-capture-measured.md`、`docs/design/P1-data-checklist-v1.md`、本日志、若干 `spikes/hdt-diag-logger/tools/analyze_*.py` / `peek_*.py`。
 - 更新：`bobsbuddy-simulator-input.md`、`open-questions.md`（Q-006 / Q-007 关闭）、`facts/README.md`、`roadmap.md`（P1-T3 勾完）、`status.md`、插件方案与 spike README。
 - 未完成：P1-T5 等审阅；Q-013 / Q-009 / Q-011；P2 把快照改到 `2022=0`、丢掉旧 invoker 键。
+
+---
+
+## 异地采集：插件齐备判断与操作说明
+
+### 目标
+
+所有者将暂时没有开发环境，要在另一台电脑上继续 P1 采集。确认当前诊断插件是否够用，并写一份只靠拷文件就能开工的说明。
+
+### 做了什么
+
+1. 对照方案第 5 节、3 局 / 27 场验收、清单 v1 缺口，核对插件代码与本机已部署 DLL。
+2. 新增 [`docs/process/field-capture.md`](../process/field-capture.md)；spike README 与流程索引加了入口；更新 `status.md`。
+
+### 发现 / 结论
+
+- **对继续采集齐备。** 本机 `Plugins\HdtDiagLogger.dll` 与仓库 Release 构建均为 44032 字节、2026-09-25 16:56，版本 0.1.0。27/27 场开战快照 / Input / Output / 战后快照齐全，0 错误，无超时。已知缺口是样本与游戏可见性，不是插件坏了。
+- **新电脑不需要开发环境。** 只拷这一个 DLL 到官方 HDT 的 `Plugins\`，启用即可。不要拷 HDT / Bob's Buddy 二进制。
+- **不必为 P2 设计债停手。** 快照仍在 `3533`、新对局会倒残留 invoker：分析能处理，正式采集器以后再改。
+
+### 留下的东西
+
+- 新增：`docs/process/field-capture.md`。
+- 更新：`spikes/hdt-diag-logger/README.md`、`docs/process/prompts/README.md`、`docs/status.md`、本日志。
+- 未完成：与上一节相同。

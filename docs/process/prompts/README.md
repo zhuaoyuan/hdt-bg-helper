@@ -29,6 +29,8 @@ agent 读到提示词后按其中的步骤执行。每份提示词都默认 agen
 | [`version-upgrade.md`](version-upgrade.md) | HDT / Bob's Buddy / 游戏版本更新后的同步与复核 |
 | [`session-handoff.md`](session-handoff.md) | 会话收尾交接 |
 
+相关操作说明（不是提示词）：[`field-capture.md`](../field-capture.md) — 在没有开发环境的电脑上继续打酒馆并带回诊断记录。
+
 ## 维护
 
 提示词效果不好时（agent 反复犯同一类错误），直接修改对应提示词，并在 worklog 里写明改了什么、为什么。

@@ -7,6 +7,7 @@
 
 ## 最近完成
 
+- **异地继续采集说明**（2026-09-26）：确认诊断插件 0.1.0 对「继续打、继续记」功能齐备，不必改插件。操作见 [`process/field-capture.md`](process/field-capture.md)。
 - **P1-T3 字段实测标注**（2026-09-26）：官方 HDT 3 局 / 27 场战斗全部验收通过。Q-006、Q-007 关闭。清单补了采集时机、对手可见性（实测）和版本敏感说明。统计见 [`facts/diag-capture-measured.md`](facts/diag-capture-measured.md)，字段表见 [`facts/bobsbuddy-simulator-input.md`](facts/bobsbuddy-simulator-input.md)。
 - **诊断记录 3 局验收通过**（2026-09-26）：`cd944c` 9 场、`a8ee8b` 8 场、`e07627` 10 场；开战快照 / HDT Input / Output / 战后快照齐全；0 错误；无插件超时；匿名化通过。不需要修插件或重打。
 - **换用官方版 HDT**（2026-09-25）：ADR-0007 取代 ADR-0005；Q-010、Q-012 关闭。
@@ -18,10 +19,11 @@
 
 ## 下一步（按优先级）
 
-1. **所有者：** 审阅数据清单 v1（`design/P1-data-checklist-v1.md`）。打几局带任务、对手奥秘、Malorne / 畸变的对局有助于补缺口；不是完整性重打。
-2. **Q-013 / Q-009 / Q-011（独立进程，不阻塞 P1-T3）：** 用记录里的场面设置 / 不设置 HDT 未赋值字段；测单场耗时；同一场面在 BB 1.76.0 / 1.78.1 / 1.78.8 下比失败率和胜率。脚本可从 `spikes/hdt-diag-logger/tools/` 的分析工具接着写。
-3. **P2-T1：** 采集方案。要点：快照改到 `2022=0`（或同时拍）；按对局 id 丢掉旧 invoker；`2717` 同时记 TF 和玩家实体。
-4. 往返验证（实体快照重建 Input vs `hdt_bb` Output，约 2 个百分点）可与 Q-013 一起做。
+1. **所有者（可在无开发环境的电脑上）：** 按 [`process/field-capture.md`](process/field-capture.md) 拷走 `HdtDiagLogger.dll`，用官方 HDT 继续打。优先碰到任务、对手奥秘、Malorne、畸变、战斗中补录就留下；打完把整个 `BgHelperDiag\` 带回来。
+2. **所有者：** 审阅数据清单 v1（`design/P1-data-checklist-v1.md`）。
+3. **Q-013 / Q-009 / Q-011（独立进程，不阻塞 P1-T3）：** 用记录里的场面设置 / 不设置 HDT 未赋值字段；测单场耗时；同一场面在 BB 1.76.0 / 1.78.1 / 1.78.8 下比失败率和胜率。脚本可从 `spikes/hdt-diag-logger/tools/` 的分析工具接着写。
+4. **P2-T1：** 采集方案。要点：快照改到 `2022=0`（或同时拍）；按对局 id 丢掉旧 invoker；`2717` 同时记 TF 和玩家实体。
+5. 往返验证（实体快照重建 Input vs `hdt_bb` Output，约 2 个百分点）可与 Q-013 一起做。
 
 ## 未决问题分工
 
