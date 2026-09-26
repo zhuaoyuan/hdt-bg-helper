@@ -2,7 +2,7 @@
 
 **目的：** 所有者带着这个插件正常打酒馆战棋，插件在本机尽可能完整地记录每场战斗，供 agent 离线分析数据清单（P1-T3 / P1-T5）并实测 Q-002、Q-006、Q-007。方案见 [`docs/design/P1-diagnostic-logger.md`](../../docs/design/P1-diagnostic-logger.md)。
 
-**状态（2026-09-25）：** 已在官方 HDT 1.58.3 上跑过 1 局单人酒馆战棋，验收通过（9/9 场战斗完整，Q-002 反射可用）。请再打 3–5 局。
+**状态（2026-09-26）：** 官方 HDT 1.58.3 上 3 局单人、27/27 场战斗验收通过。字段分析见 [`docs/facts/diag-capture-measured.md`](../../docs/facts/diag-capture-measured.md)。分析时只用本场 `2022=0` 及之后的 `hdt_bb`（新对局开头会倒出上一局残留 invoker）。
 
 ## 使用
 

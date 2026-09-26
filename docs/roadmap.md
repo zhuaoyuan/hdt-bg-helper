@@ -22,7 +22,7 @@
 
 - [x] P1-T1 静态分析 HDT 中构造模拟器输入的全部代码：`BobsBuddyInvoker.cs`、`BobsBuddyUtils.cs`、`TagChangeActions.cs` / `PowerHandler.cs` 中所有调用 `BobsBuddyInvoker` 的位置
 - [x] P1-T2 检查 `BobsBuddy.dll` 公开 API：能否在插件或独立进程中自行构造 `Input` 并调用 `SimulationRunner`（Q-001，结论见 `facts/bobsbuddy-public-api.md`）
-- [ ] P1-T3 对清单每个字段标注：采集时机（战斗前快照 / 战斗中揭示 / 派生计算）、可见性（己方 / 对手 / 队友）、是否版本敏感
+- [x] P1-T3 对清单每个字段标注：采集时机（战斗前快照 / 战斗中揭示 / 派生计算）、可见性（己方 / 对手 / 队友）、是否版本敏感
 - [x] P1-T4 确认 HDT 日志中 Bob's Buddy 输入/输出的记录完整度，评估能否作为对照基准（Q-004，结论见 `facts/hdt-log-simulation-input.md`）
 - [ ] P1-T5 发布数据清单 v1，并列出已知覆盖缺口
 

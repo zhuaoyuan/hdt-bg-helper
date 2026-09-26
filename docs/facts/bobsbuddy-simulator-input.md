@@ -1,11 +1,12 @@
 # Bob's Buddy 调用方式与输入数据清单
 
 > 这份文档回答：HDT 是怎样调用 Bob's Buddy 的；要重现一场战斗的模拟，模拟器输入里有哪些字段、每个字段从游戏状态的哪里来、什么时候被读取或更新、对手一方能不能看到。
-> 这是 **P1 的主交付物**。P1-T1（源码静态分析）已完成；"对手可见性"一列目前只有源码依据，实测确认留给 P1-T3，见文末"待补全"。
+> 这是 **P1 的主交付物**。P1-T1（源码）与 P1-T3（官方 HDT 3 局 / 27 场实测标注）已完成。统计证据见 [`diag-capture-measured.md`](diag-capture-measured.md)。
 
 ```text
 基线：HDT v1.58.3 / 509bb0b9
-最后核实：2026-09-25
+实测：官方 HDT 1.58.3.8362 / BB 1.78.1 / 炉石 56608，2026-09-25–26
+最后核实：2026-09-26
 ```
 
 文中 `Invoker:N` 表示 `Hearthstone Deck Tracker/BobsBuddy/BobsBuddyInvoker.cs` 第 N 行，`Utils:N` 表示同目录下的 `BobsBuddyUtils.cs`。其他文件写成 `文件名:N`，路径都在 `Hearthstone Deck Tracker/` 下：`TagChangeActions.cs`、`PowerHandler.cs`（`LogReader/Handlers/`）、`GameEventHandler.cs`（根目录）、`BattlegroundsUtils.cs`、`GameV2.cs`、`Player.cs`（`Hearthstone/`）、`LogWatcherManager.cs`（`LogReader/`）。
@@ -14,9 +15,13 @@
 
 "对手可见性"一列的写法：
 
-- **可见** / **不可见**：源码有明确注释或专门处理作为依据。
-- **HDT 直接读取**：HDT 从对手实体读取，没有特殊处理、也没有注释。说明 HDT 作者认为能读到，但没有直接证据，需要实测。
-- **待实测**：源码看不出。
+- **可见** / **不可见**：源码有明确注释或专门处理，或 2026-09-26 实测已确认。
+- **HDT 直接读取**：HDT 从对手实体读取，没有特殊处理、也没有注释。说明 HDT 作者认为能读到。
+- **待实测**：本批 27 场里没有正例，或只在双人 / 特定卡上才会出现。
+
+采集时机：`战斗开始` = `GameEntity` 标签 `2022` 1→0 的同一行（HDT 已写好 `_input`）；`3533` 1→0 只置战斗阶段标志，比 BB 快照早约 80 行。`战斗中` = 第 5.2 节补录。`对局级` = 开局即可，不随对手变。
+
+版本敏感：本批三局同一 HDT / BB / 炉石版本，**没有跨版本对照**。依赖具体标签 id 或附魔 CardId 的字段随补丁会变（Q-011）；`Health` / `Side` / `availableRaces` 这类结构在 BB 1.76–1.78 之间是稳定的。
 
 ## 1. 调用方式
 
@@ -83,7 +88,7 @@
 
 | 参数 | 来源 | 对手可见性 |
 | --- | --- | --- |
-| 是否已激活 | `WasHeroPowerActivated`：`EXHAUSTED` 或 `BACON_HERO_POWER_ACTIVATED`；双人模式下 Embrace Your Rage（`TB_BaconShop_HP_103`）只看 `EXHAUSTED`，因为该技能在双人模式下 `BACON_HERO_POWER_ACTIVATED=1` 会重复出现但战斗中并不触发（`Utils:488–497`） | 待实测 |
+| 是否已激活 | `WasHeroPowerActivated`：`EXHAUSTED` 或 `BACON_HERO_POWER_ACTIVATED`；双人模式下 Embrace Your Rage（`TB_BaconShop_HP_103`）只看 `EXHAUSTED`，因为该技能在双人模式下 `BACON_HERO_POWER_ACTIVATED=1` 会重复出现但战斗中并不触发（`Utils:488–497`） | **可见**（对手已使用时两标签都会出现） |
 | `Data` / `Data2` / `Data3` | `TAG_SCRIPT_DATA_NUM_1/2/3`（`Invoker:526–528`） | HDT 直接读取 |
 | 实体 id | 英雄技能实体 id（`Invoker:596`） | — |
 
@@ -96,11 +101,11 @@
 
 | 项 | 来源 | 对手可见性 |
 | --- | --- | --- |
-| 任务 | 该玩家 `SECRET` 区的任务 / 支线任务实体（`Player.cs:113`）：`QUEST_PROGRESS`、`QUEST_PROGRESS_TOTAL`、`CardId`、`QUEST_REWARD_DATABASE_ID` → 奖励 CardId（`Invoker:599–610`） | 待实测 |
-| 任务奖励 | 该玩家 `PLAY` 区的任务奖励实体（`Player.cs:115`）：`LatestCardId`、`TAG_SCRIPT_DATA_NUM_1/2`（`Invoker:612–620`） | 待实测 |
-| 饰品 | 该玩家 `PLAY` 区的饰品实体（`Player.cs:114`），经 `GetTrinketFromEntity`（`Utils:439–461`），见下 | HDT 直接读取 |
-| 目标对象 | 该玩家 `SECRET` 区的 objective 实体（`Player.cs:117`），经 `GetObjectiveFromEntity`（`Utils:400–408`），见下 | 待实测 |
-| 神祇（Deity Sigil） | objective 为 `BG_OldGod` 时额外调用 `GetDeityFromSigil`，赋给 `AttachedMinion`（`Invoker:634–635`），见下 | 待实测 |
+| 任务 | 该玩家 `SECRET` 区的任务 / 支线任务实体（`Player.cs:113`）：`QUEST_PROGRESS`、`QUEST_PROGRESS_TOTAL`、`CardId`、`QUEST_REWARD_DATABASE_ID` → 奖励 CardId（`Invoker:599–610`） | 本批仅 1 条正例（`BG24_Quest_123`）；对手长期比例待补 |
+| 任务奖励 | 该玩家 `PLAY` 区的任务奖励实体（`Player.cs:115`）：`LatestCardId`、`TAG_SCRIPT_DATA_NUM_1/2`（`Invoker:612–620`） | 本批奖励区为空 |
+| 饰品 | 该玩家 `PLAY` 区的饰品实体（`Player.cs:114`），经 `GetTrinketFromEntity`（`Utils:439–461`），见下 | **可见**（双方开战快照与 Input 都有） |
+| 目标对象 | 该玩家 `SECRET` 区的 objective 实体（`Player.cs:117`），经 `GetObjectiveFromEntity`（`Utils:400–408`），见下 | **可见**（27/27 双方有目标；常与神祇同一实体） |
+| 神祇（Deity Sigil） | objective 为 `BG_OldGod` 时额外调用 `GetDeityFromSigil`，赋给 `AttachedMinion`（`Invoker:634–635`），见下 | **可见**（27/27 双方 Input 有 `DeitySigil`） |
 
 `GetTrinketFromEntity`（`Utils:439–461`）：
 
@@ -135,7 +140,7 @@
 ### 3.6 玩家级附魔计数器（附着在玩家实体上，`Invoker:706–882`）
 
 - 取玩家实体上的附着实体；双人模式下只取 `IsInPlay` 的。注释（`Invoker:698–705`，称已对照 276 场双人战斗核实）：每名玩家的附魔只挂在两个玩家实体（Player、Opponent）上；换成队友战团时，游戏为队友新建一份附魔挂在同一玩家实体的 `PLAY` 区，把原来的移到 `SETASIDE`。
-- 下表"对手可见性"统一为：**HDT 直接读取**（从对手玩家实体取附魔，无特殊处理）。每种附魔是否都会为对手下发，待实测。
+- 下表"对手可见性"统一为：**HDT 直接读取**（从对手玩家实体取附魔，无特殊处理）。实测对手 `PLAY` 区出现过永恒骑士、亡灵加成、血宝石附魔，Input 非零；其余附魔本批无正例。
 
 | `Input.Player` 字段 | 来源附魔（CardId）/ 标签 | 行号 |
 | --- | --- | --- |
@@ -164,7 +169,7 @@
 | `BeastsSummonCounter` | `3962` | 可见（TagTransfer） |
 | `TastyLobsterCounter` | `4803` | 可见（TagTransfer） |
 | `GoldenMinionsPlayedCounter` | `4799` | 可见（TagTransfer） |
-| `FriendlyMinionsDeadLastCombatCounter` | `2717` | 可见（TagTransfer） |
+| `FriendlyMinionsDeadLastCombatCounter` | `2717` | **本批不可见**：TF 从不带；HDT 读 TF 得到 0；对手玩家实体 9/27 场有非零 |
 | `BattlecryCounter` | `3236` | 可见（TagTransfer） |
 | `TavernSpellCounter` | `3088` | 可见（TagTransfer） |
 | `DeathrattleCounter` | `4639` | 可见（TagTransfer） |
@@ -173,7 +178,7 @@
 | `ResourcesSpentThisGame` | `NUM_RESOURCES_SPENT_THIS_GAME`（418），直接读玩家实体（`Invoker:825`） | **不可见**：注释"对手从不下发该标签"（`Invoker:827`，`Utils:470`）。对手场上有 Malorne 时反推，见下 |
 
 - 上表数字标签除 2878 外在 HearthDb 36.6.0 中都没有名字，含义以 `Invoker` 中赋给的字段名为准。
-- "可见（TagTransfer）"的依据是 `Invoker:715–718` 的注释。注释没有逐个标签列出，**哪些标签确实由 TagTransfer 携带，待实测**。双人模式下 HDT 不用 TagTransfer，直接读对手玩家实体（`Invoker:720`）。
+- "可见（TagTransfer）"的依据是 `Invoker:715–718` 的注释，以及 2026-09-26 实测（见 [`diag-capture-measured.md`](diag-capture-measured.md) 第 3 节）。**`2717` 在 27 场里从未出现在 TagTransfer 上。** 双人模式下 HDT 不用 TagTransfer，直接读对手玩家实体（`Invoker:720`），本批无双人。
 - 残留风险：`TagChangeActions.cs:1684–1699` 注释说，对手的 `TAVERN_SPELL_*_INCREASE` 可能从高值降下来，而降为 0 时游戏不发更新；血宝石的 `BACON_BLOODGEMBUFF*VALUE` 也会从上一个对手残留，因为"揭示时只写非零值"。所以 HDT 在 `NEXT_OPPONENT_PLAYER_ID` 变化时把对手玩家实体上这四个标签清零，等揭示时重新写入。
 - `ResourcesSpentThisGame` 的对手值（`Utils:471–486`，`Invoker:828–834`）：对手场上有 Malorne（`BG32_HERO_001_Buddy` / 金色 `_G`）时，`光环 = min(ATK − 卡面攻击 − 附魔 NUM_1 之和, HEALTH − 卡面生命 − 附魔 NUM_2 之和)`（排除 Power of Ancients 附魔 `BG32_HERO_001_Buddye`），金色再除以 2，结果 × 3。战斗中召唤出的 Malorne 另有推算，见 5.2 的 `UpdateOpponentResourcesSpentThisGame`。
 
@@ -330,7 +335,7 @@
 5. 没有"战斗开始 / 结束"事件。插件可以在日志行中自己识别标签 `2022`（单人）/ `3533`（双人）的 1→0，或在 `OnUpdate`（约 100ms）中轮询公开属性 `GameV2.IsBattlegroundsCombatPhase`（`GameV2.cs:140`；置真：`TagChangeActions.cs:203, 233`；置假：`GameEventHandler.cs:514`）。轮询有最多约 100ms 的延迟，并且会错过 HDT"假战斗"过滤（`TagChangeActions.cs:213–218`）的结果。
 6. 少数公开 `GameEvents` 与 Bob's Buddy 更新同时发生：`OnOpponentSecretTriggered` 在同一处理函数里、紧挨在 `UpdateOpponentSecret` 之前（`GameEventHandler.cs:2929–2934`）；`OnPlayerMinionAttack` / `OnOpponentMinionAttack` 与 `UpdateAttackingEntities` 在同一个 `OnAttackEvent` 里（`GameEventHandler.cs:332–341`）。其余补录（手牌揭示、Tavish、Sandy、Floop、召唤法球、Magnanimoose、手牌相关附魔、Malorne、Nellie、亡语对账）没有对应的公开事件。
 7. `availableRaces` 不在 Power.log 里，来自 HearthMirror 读内存；`BattlegroundsUtils` 是 `public static class`，插件可以直接调用 `GetAvailableRaces()`（`BattlegroundsUtils.cs:12, 28–31`）。离线重放日志时要另找来源。
-8. **[推断]** `TagChangeActions` 的动作是排队后由 `InvokeQueuedActions` 执行的（`PowerHandler.cs:322–323, 2003–2005`），创建标签行（`creationTag`）不会触发执行。所以个别由标签变化触发的更新，在插件看到的"那一行"上可能还没执行。需要实测确认。
+8. `TagChangeActions` 的动作排队后由 `InvokeQueuedActions` 执行（`PowerHandler.cs:322–323, 2003–2005`）。**实测（27/27）：** 该行处理完、`InvokeQueuedActions` 跑完，才进入 `OnPowerLogLine`。第一次 `_input` 就在 `2022` 1→0 的同一行。`creationTag` 行不调用 `InvokeQueuedActions`（源码），本批没有单独对照。详见 [`diag-capture-measured.md`](diag-capture-measured.md) 第 2 节。
 
 ## 9. Q-007 的源码层结论：对手玩家级数据哪些拿不到或只能推算
 
@@ -342,12 +347,12 @@
 | 手牌相关附魔的数值（Choral Mrrrglr、Costume Enthusiast、Dramaloc、Dramaloc Sticker） | **只在战斗中触发时可得** | 专门只对对手来源在战斗中补录（`PowerHandler.cs:1843–1866`）。**[推断]** 数值取决于对手手牌 |
 | 对手 Tavish 装填的随从 | 快照时可能拿不到，战斗中补录 | 单人模式只为对手补录（`Invoker:1057–1066`）。**[推断]** `SETASIDE` 中的装填随从对对手不可见 |
 | 对手 Sandy 的复制源 | 不可用 | 注释：对手一侧的 `SETASIDE` 复制源是隐藏创建的，揭示时已在 `REMOVEDFROMGAME`（`TagChangeActions.cs:367–370`） |
-| 3.7 中 13 个整局标签计数器 | **可见，但要读 TagTransfer 附魔** | 注释：每场战斗给对手玩家实体挂 `Bacon_TagTransferPlayerE`，携带对手的整局计数器；鬼魂对手的玩家实体可能是旧值（`Invoker:715–722`）。逐个标签是否都在其中，待实测 |
+| 3.7 中 13 个整局标签计数器 | **可见，但要读 TagTransfer 附魔** | 注释：每场战斗给对手玩家实体挂 `Bacon_TagTransferPlayerE`，携带对手的整局计数器；鬼魂对手的玩家实体可能是旧值（`Invoker:715–722`）。**实测 27 场：** 每场对手 `PLAY` 区都有该附魔；`2358` / `3088` / `3236` / `4639` / `4799` / `3962` / `3670` / `BACON_ELEMENTAL_PLAY_COUNTER` 出现时 Input 与 TF 一致。**`2717` 从不在 TF 上**，对手 Input 恒为 0，但玩家实体 9/27 场有非零值。`4803`、`4468`/`4469`、元素额外攻血本批无正例 |
 | `TavernSpellAtkBuff` / `HealthBuff`、血宝石加成标签部分 | 可见，**有跨对手残留风险** | 揭示时只写非零值，HDT 在换对手时清零（`TagChangeActions.cs:1684–1699`）；酒馆法术加成先读玩家实体、再读 TagTransfer（`Invoker:860–867`） |
-| 3.6 中的玩家附魔计数器 | HDT 直接读取 | 注释：每名玩家的附魔挂在各自玩家实体上（`Invoker:698–705`）；没有针对对手的特殊处理。待实测 |
+| 3.6 中的玩家附魔计数器 | **可见（本批正例）** | 注释：每名玩家的附魔挂在各自玩家实体上（`Invoker:698–705`）。实测对手 `PLAY` 区出现 `BG25_008pe` / `BG25_011pe` / `BG26_159pe`，Input 对应计数器非零 |
 | `DeepBluesCounter`、`AnySpellCounter`、`BackToBackCounter` | 双方都没有 | HDT 从未赋值（第 7 节） |
 | `BackToBackAtk` / `Health` | 双方都只在战斗中可得 | 只由 `UpdateBackToBackSpellBonus` 赋值 |
-| 英雄技能是否已激活、任务、目标、神祇 | 待实测 | HDT 读取方式对双方相同，源码没有说明对手是否可见 |
+| 英雄技能是否已激活、任务、目标、神祇 | **本批：技能激活与神祇可见；任务仅 1 条** | 对手 `EXHAUSTED` / `BACON_HERO_POWER_ACTIVATED` 在已使用时出现；27/27 双方有 `DeitySigil`；任务 `BG24_Quest_123` 出现 1 次 |
 
 ## 待补全
 
@@ -356,6 +361,7 @@
 - [x] ~~`BattlegroundsUtils.GetAvailableRaces`、`GetBattlegroundsAnomalyDbfId`~~ → 第 2 节
 - [x] ~~`TagChangeActions.cs` / `PowerHandler.cs` 中每个战斗中更新的触发条件~~ → 第 5 节
 - [x] ~~`Input`、`Player`、`Minion` 中 HDT 没有赋值的字段~~ → 第 7 节
-- [ ] 每个字段的采集时机、对手可见性（实测确认）、版本敏感度标注（P1-T3）。重点：3.7 各标签是否都由 TagTransfer 携带；3.6 各玩家附魔、英雄技能激活状态、任务 / 目标 / 神祇对对手是否可见；标签 `2022` / `3533` 的实际含义。
-- [ ] 第 7 节未赋值成员中，哪些会被 BB 读取、影响结果（需要 BB 行为实验）。
-- [ ] 第 8 节第 8 条（排队的标签变化动作与 `OnPowerLogLine` 的先后）需要实测。
+- [x] ~~每个字段的采集时机、对手可见性（实测确认）、版本敏感度标注（P1-T3）~~ → 上文可见性列、第 8 节第 8 条、[`diag-capture-measured.md`](diag-capture-measured.md)。标签 `2022` = 单人 BB 开战；`3533` = 战斗阶段标志 / HDT 场面快照。
+- [ ] 第 7 节未赋值成员中，哪些会被 BB 读取、影响结果（Q-013，独立进程实验，不阻塞本清单）。
+- [x] ~~第 8 节第 8 条（排队的标签变化动作与 `OnPowerLogLine` 的先后）~~ → 第 8 节第 8 条已改为实测结论。
+- [ ] 仍无正例：双人、畸变、Malorne、对手 Tavish 装填与 5.2 多数补录、`4803` / Volumizer / 元素额外攻血的对手非零、`2717` 是不传输还是残留。

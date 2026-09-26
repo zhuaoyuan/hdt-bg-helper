@@ -172,6 +172,7 @@
 - **原始行对局结束后才压缩**（写线程上进行），这样 HDT 中途被关闭时，未压缩的 `power.log` 仍然可读。
 - **HDT 读到的 Power 行比炉石磁盘日志少。** 监视器只接收以 `PowerTaskList.DebugPrintPower`、`GameState.`、`PowerProcessor.EndCurrentTaskList`、`ChoiceCardMgr.` 开头的行（`LogWatcherManager.cs:43–46`）；`OnPowerLogLine` 再去掉后三类。第一局实测：插件 65,110 行，与当局 `PowerTaskList.DebugPrintPower` 行一致（对局结束后炉石又写了 29 行）。
 - **第一局验收（2026-09-25）通过**，见 `docs/worklog/2026-09-25-switch-to-official-hdt.md`。
+- **3 局验收（2026-09-26）通过**（27/27，0 错误，无超时）。`3533=0` 拍实体快照，`2022=0` 才有 BB Input（间隔 54–105 行）。新对局开头会倒出上一局 `_instances` 残留，分析须按行号过滤。结论见 `facts/diag-capture-measured.md`。
 - 事件注册必须直接写在插件类的 `OnLoad` 里：`ActionList.Add` 是按调用方法所在的类型来认定插件的（`API/ActionList.cs`），放在别处注册，停用插件后 HDT 仍会继续调用这些回调。
 
 ## 8. 所有者确认事项（2026-09-25 已确认）

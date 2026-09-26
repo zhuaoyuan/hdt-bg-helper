@@ -31,7 +31,8 @@
 | 文件 | 内容 |
 | --- | --- |
 | [`hdt-baseline.md`](hdt-baseline.md) | HDT 版本、构建、插件接口、事件与战斗时机 |
-| [`bobsbuddy-simulator-input.md`](bobsbuddy-simulator-input.md) | Bob's Buddy 调用方式、输入数据清单、触发时序、对手可见性（P1 主交付物；源码分析已完成，实测待 P1-T3） |
+| [`bobsbuddy-simulator-input.md`](bobsbuddy-simulator-input.md) | Bob's Buddy 调用方式、输入数据清单、触发时序、对手可见性（P1 主交付物；P1-T1 / P1-T3 已完成） |
+| [`diag-capture-measured.md`](diag-capture-measured.md) | 官方 HDT 诊断记录实测：验收、Q-006 时序、TagTransfer 标签与缺口比例（2026-09-26，3 局 / 27 场） |
 | [`bobsbuddy-minion-enchantments.md`](bobsbuddy-minion-enchantments.md) | 随从附着附魔 → BB `Minion` 字段映射全表（上一份的附表） |
 | [`local-environment.md`](local-environment.md) | 所有者本机实际运行的 HDT 版本、数据目录、可用工具 |
 | [`bobsbuddy-public-api.md`](bobsbuddy-public-api.md) | `BobsBuddy.dll` 公开 API、独立调用实测、版本差异 |
