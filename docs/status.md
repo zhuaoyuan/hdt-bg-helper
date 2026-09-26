@@ -7,6 +7,7 @@
 
 ## 最近完成
 
+- **项目整体评估**（2026-09-26）：结论与 8 条计划补充建议见 [`worklog/2026-09-26-project-review.md`](worklog/2026-09-26-project-review.md)，待所有者选定。
 - **异地继续采集说明**（2026-09-26）：确认诊断插件 0.1.0 对「继续打、继续记」功能齐备，不必改插件。操作见 [`process/field-capture.md`](process/field-capture.md)。
 - **P1-T3 字段实测标注**（2026-09-26）：官方 HDT 3 局 / 27 场战斗全部验收通过。Q-006、Q-007 关闭。清单补了采集时机、对手可见性（实测）和版本敏感说明。统计见 [`facts/diag-capture-measured.md`](facts/diag-capture-measured.md)，字段表见 [`facts/bobsbuddy-simulator-input.md`](facts/bobsbuddy-simulator-input.md)。
 - **诊断记录 3 局验收通过**（2026-09-26）：`cd944c` 9 场、`a8ee8b` 8 场、`e07627` 10 场；开战快照 / HDT Input / Output / 战后快照齐全；0 错误；无插件超时；匿名化通过。不需要修插件或重打。
@@ -39,3 +40,4 @@
 
 - [ADR-0004](decisions/0004-capture-light-compute-async.md) 为 `proposed`，P2-T1 设计时细化后确认。
 - P1-T5 等所有者审阅后再勾完成。
+- **计划补充建议待选**（2026-09-26）：8 条，见 [`worklog/2026-09-26-project-review.md`](worklog/2026-09-26-project-review.md)。重点是先做离线重放工具和核心假设早期验证（P3-T0），不要等到 P3-T4 才验证战力分位。选定后再改 `roadmap.md`。
