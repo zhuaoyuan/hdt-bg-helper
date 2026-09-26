@@ -10,7 +10,7 @@
 
 | 编号 | 问题 | 影响 | 验证方式 | 关联 | 状态 |
 | --- | --- | --- | --- | --- | --- |
-| Q-002 | 能否通过反射读取 HDT 内部 `BobsBuddyInvoker._input`，作为对照基准或数据源？稳定性如何？ | 中 | 写原型插件尝试；关注 HDT 源码注释提到的"第三方插件保存/恢复 input"。源码层已知：`BobsBuddyInvoker` 是 `internal`，实例存在私有静态字典里，键为 `<gameId>_<回合>`（`facts/bobsbuddy-simulator-input.md` 第 8 节）。Q-004 结论是日志只能近似重建输入，所以反射仍是拿到 HDT 完整输入的唯一途径 | P1-T2、P2-T5 | open |
+| Q-002 | 能否通过反射读取 HDT 内部 `BobsBuddyInvoker._input`，作为对照基准或数据源？稳定性如何？ | 中 | **首次实测成功**（2026-09-25，官方 HDT 1.58.3 / BB 1.78.1，诊断记录插件）：读到 `_instances`、`_input`、`Output`、`_state`、`_reRunCount`；一局 9 场战斗均有 Input 和 Output（含胜/平/负率和 9996 次模拟），回合 6 的一次重跑也被记到。稳定性（跨 HDT 小版本、字段改名）仍待更多局和版本升级时观察 | P2-T5、`spikes/hdt-diag-logger/` | investigating |
 | Q-006 | 战斗中揭示的信息（第 5 节列表）插件能否在同一时机拿到？是否需要自行解析日志？ | 高 | 源码层结论（2026-09-25）：HDT 没有为这些更新提供公开事件；`LogEvents.OnPowerLogLine` 在 HDT 处理完同一行后同步回调，实体状态已更新；但 BLOCK 上下文是私有的，插件需要自己跟踪 BLOCK_START / BLOCK_END；也没有"战斗开始"事件，需要自己识别标签 2022 / 3533 由 1 变 0。详见 `facts/bobsbuddy-simulator-input.md` 第 8 节。**还需 P2 原型实测**：标签变化触发的动作是否排队执行、插件看到某一行时 HDT 的更新是否已完成 | P1-T1、P2-T3 | investigating |
 | Q-007 | 对手玩家级计数器（如 `NUM_RESOURCES_SPENT_THIS_GAME` 从不下发）有哪些拿不到或只能推算？会让多大比例的快照变成 `partial`？ | 高 | 源码层清单已完成（2026-09-25，`facts/bobsbuddy-simulator-input.md` 第 9 节）：`ResourcesSpentThisGame`、未知手牌、未知奥秘、依赖对手手牌的附魔数值、对手 Tavish 装填随从拿不到或只能推算；13 个整局计数器依赖 `Bacon_TagTransferPlayerE` 附魔。**还需实测**：TagTransfer 附魔实际携带哪些标签；各项缺失在真实对局中的出现比例 | P1-T3、P2-T6 | investigating |
 | Q-008 | 个人对局数据量能否支撑按"同补丁 + 同回合 + 同规则"筛选的参照池？需要多少局？ | 高 | 初步估算（2026-09-25，`research/q008-personal-data-volume.md`）：活跃期约 77 局/月，一个补丁窗口约 45 局；严格分桶下只有回合 ≤12、每桶约 30 个样本能在一个补丁内攒够，再按种族或畸变分桶基本不可行。**P3-T1 设计时需要据此放宽分桶**（跨补丁合并、相邻回合合并、计入对手场面等），并请所有者确认今后的对局频率 | P3 | investigating |

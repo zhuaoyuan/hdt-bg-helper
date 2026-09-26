@@ -22,12 +22,14 @@ from collections import Counter, defaultdict
 DEFAULT_ROOT = os.path.join(os.environ.get("APPDATA", ""), "HearthstoneDeckTracker", "BgHelperDiag")
 DEFAULT_HS_LOGS = r"C:\Program Files (x86)\Hearthstone\Logs"
 
-# Lines HDT does not forward to LogEvents.OnPowerLogLine (LogWatcherManager.cs:150-179)
-NOT_FORWARDED = ("GameState.", "PowerProcessor.EndCurrentTaskList", "ChoiceCardMgr.")
+# HDT's Power watcher only reads these prefixes (LogWatcherManager.cs:43-46). Of those,
+# OnPowerLogLine only gets PowerTaskList.DebugPrintPower (the else branch at :180-185).
+FORWARDED_PREFIX = "PowerTaskList.DebugPrintPower"
 LINE_PREFIX = re.compile(r"^[A-Z] \d\d:\d\d:\d\d\.\d+ ")
 BATTLETAG = re.compile(r"[^\s=#\[\]\"',:{}()]{1,24}#\d{3,6}")
 ACCOUNT = re.compile(r"(hi|lo)=\d{6,}")
 PLACEHOLDER = re.compile(r"player_[0-9a-f]{8}")
+ENTITY = re.compile(r"Entity=(?:\[[^\]]*\]|\S+)")
 
 
 def open_text(path):
@@ -162,6 +164,7 @@ def anonymisation_scan(game_dir):
 
 
 def normalise(line):
+    line = LINE_PREFIX.sub("", line.rstrip())
     line = PLACEHOLDER.sub("<P>", line)
     line = BATTLETAG.sub("<P>", line)
     line = ACCOUNT.sub(lambda m: m.group(1) + "=<P>", line)
@@ -188,29 +191,63 @@ def compare_with_hs(game_dir, hs_root):
     ours = [line for _, _, line in read_raw(game_dir)]
     if not ours:
         return "no raw lines"
-    first = ours[0]
-    for path in find_hs_power_logs(hs_root):
+    first = normalise(ours[0])
+    best = None
+    game_name = os.path.basename(game_dir)
+    date_hint = None
+    if len(game_name) >= 8 and game_name[:8].isdigit():
+        date_hint = f"{game_name[:4]}_{game_name[4:6]}_{game_name[6:8]}"
+    paths = find_hs_power_logs(hs_root)
+    if date_hint:
+        dated = [p for p in paths if date_hint in p]
+        if dated:
+            paths = dated
+    for path in paths:
+        theirs = []
+        collecting = False
         with open(path, encoding="utf-8", errors="replace") as f:
-            it = iter(f)
-            for raw in it:
-                if raw.rstrip("\n") != first:
+            for raw in f:
+                l = raw.rstrip("\n")
+                content = LINE_PREFIX.sub("", l)
+                if not content.startswith(FORWARDED_PREFIX):
                     continue
-                theirs = [first]
-                for raw2 in it:
-                    l = raw2.rstrip("\n")
-                    content = LINE_PREFIX.sub("", l)
-                    if content.startswith(NOT_FORWARDED):
+                if not collecting:
+                    if normalise(l) != first:
                         continue
-                    theirs.append(l)
-                    if len(theirs) >= len(ours):
-                        break
-                mismatches = [i for i, (a, b) in enumerate(zip(ours, theirs)) if normalise(a) != normalise(b)]
-                result = f"{os.path.basename(os.path.dirname(path))}/{os.path.basename(path)}: ours={len(ours)} hs={len(theirs)} mismatches={len(mismatches)}"
-                if mismatches:
-                    i = mismatches[0]
-                    result += f" first mismatch at seq {i + 1}"
-                return result
-    return "first raw line not found in Hearthstone logs (log rotated, or first line anonymised)"
+                    collecting = True
+                theirs.append(l)
+        if not collecting:
+            continue
+        compared = min(len(ours), len(theirs))
+        equal = 0
+        entity_only = 0
+        first_bad = None
+        for i in range(compared):
+            a, b = normalise(ours[i]), normalise(theirs[i])
+            if a == b:
+                equal += 1
+            elif ENTITY.sub("<E>", a) == ENTITY.sub("<E>", b):
+                entity_only += 1
+            elif first_bad is None:
+                first_bad = i
+        structural = compared - equal - entity_only
+        label = f"{os.path.basename(os.path.dirname(path))}/{os.path.basename(path)}"
+        result = (
+            f"{label}: ours={len(ours)} hs_forwarded={len(theirs)} compared={compared} "
+            f"equal={equal} entityName_only={entity_only} structural={structural}"
+        )
+        extra = len(theirs) - len(ours)
+        if extra > 0:
+            result += f" hs_extra_after={extra}"
+        elif extra < 0:
+            result += f" ours_extra={-extra}"
+        if first_bad is not None:
+            result += f" first structural mismatch at seq {first_bad + 1}"
+        # Prefer the session whose prefix actually matches this game (CREATE_GAME appears in every log).
+        score = (equal + entity_only, -structural, -abs(extra))
+        if best is None or score > best[0]:
+            best = (score, result)
+    return best[1] if best else "first raw line not found in Hearthstone logs (log rotated, or first line anonymised)"
 
 
 def dir_size(game_dir):
