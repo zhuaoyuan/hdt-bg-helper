@@ -33,4 +33,5 @@
 | [ADR-0004](0004-capture-light-compute-async.md) | 插件采集保持轻量，原始数据只追加，计算异步化 | proposed |
 | [ADR-0005](0005-modded-hdt-as-test-environment.md) | 以本机安装的修改版 HDT 作为实测与验证环境 | superseded by ADR-0007 |
 | [ADR-0006](0006-personal-plugin-use-of-hdt-bobsbuddy.md) | 个人非商业插件可调用本机 HDT / Bob's Buddy 公开 API | accepted |
-| [ADR-0007](0007-official-hdt-as-test-environment.md) | 以本机官方版 HDT（保持最新）作为实测与验证环境 | accepted |
+| [ADR-0007](0007-official-hdt-as-test-environment.md) | 以本机官方版 HDT（保持最新）作为实测与验证环境 | accepted（采集环境见 ADR-0008） |
+| [ADR-0008](0008-tuanzi-capture-with-record-crosscheck.md) | 个人采集以团子版 HDT + 对战记录对照为主 | accepted |

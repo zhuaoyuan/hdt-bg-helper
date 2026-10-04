@@ -1,8 +1,8 @@
-# 新设备继续采集（无开发环境）
+# 继续采集（诊断插件 + 可选团子对照）
 
-> 在另一台 Windows 电脑上打酒馆战棋、把诊断记录带回来。不需要安装 Git、.NET SDK、Python 或本仓库。
+> 打酒馆战棋、把诊断记录带回来；若用团子版，再带上对战记录文本做交叉验证。不需要在打本机上装 Git / .NET / Python（验收可在有仓库的机器上做）。
 >
-> 插件版本：HdtDiagLogger **0.1.0**（2026-09-25 编译，已在官方 HDT 1.58.3 / Bob's Buddy 1.78.1 上跑过 3 局 / 27 场）。
+> 插件版本：HdtDiagLogger **0.1.0**。采集环境默认见 ADR-0008（团子版 + 对战记录对照）；插件字段语义仍以官方 HDT 为准（ADR-0007）。
 
 ## 结论：插件够不够用
 
@@ -10,9 +10,9 @@
 
 它已经稳定做到：
 
-- 官方 HDT 能加载；不卡顿；BattleTag 落盘前匿名化。
+- 官方 / 团子 HDT 均能加载（共用 `%APPDATA%\HearthstoneDeckTracker\Plugins`）；不卡顿；BattleTag 落盘前匿名化。
 - 每场战斗记下开战实体快照、HDT 交给模拟器的 Input、模拟 Output、战后快照、整局 Power 行。
-- 本批 27/27 场齐全、0 错误。已知数字缺口（对手花费恒为 0、`2717` 不在 TagTransfer 上）是游戏 / HDT 不下发，插件再改也补不出来。
+- 官方批与团子单局均验收通过；团子一局与对战记录阵容/五率 10/10 对齐（`facts/diag-tuanzi-compat-20261004.md`）。
 
 它**不是**正式采集器。下面这些等有开发环境再做，**现在不要为它们停手**：
 
@@ -28,31 +28,28 @@
 
 | 拷什么 | 本机位置 |
 | --- | --- |
-| `HdtDiagLogger.dll`（约 43 KB，2026-09-25） | `%APPDATA%\HearthstoneDeckTracker\Plugins\HdtDiagLogger.dll` |
+| `HdtDiagLogger.dll`（约 43 KB） | `%APPDATA%\HearthstoneDeckTracker\Plugins\HdtDiagLogger.dll` |
 | 本说明（可选） | 仓库 `docs/process/field-capture.md` |
 
 可选：同一目录下的 `salt.txt`。带上则两台机器上同一个人会映射成同一个 `player_xxxxxxxx`；不带则新机器自己生成一份盐，分析仍然可用，只是跨机器对不上同一个人。
 
 ---
 
-## 新电脑：装官方 HDT + 插件
+## 装 HDT + 插件
 
-1. **只装官方 Hearthstone Deck Tracker**（[hsdecktracker.net](https://hsdecktracker.net/)）。不要装「团子版」或其他修改版。装好后先启动一次，让它更新到最新，再关掉。
-2. 确认炉石客户端的日志开着：炉石启动器 → 选项 → 崩溃与日志（或游戏内选项）里打开 **Power** 日志。HDT 第一次连上游戏时通常会提示，按提示打开即可。
-3. 把 `HdtDiagLogger.dll` 放到：
+### A. 默认：团子版（推荐，便于对照）
 
-   `%APPDATA%\HearthstoneDeckTracker\Plugins\`
+1. 使用已安装的团子版 HDT（本机常见目录 `C:\Program Files\HDT`）。**不要用拔线**（需要「实际结果」做对照的对局）；拔线场次 diag 可留，但对战记录里没有结果。
+2. 确认炉石 **Power** 日志已开。
+3. 把 `HdtDiagLogger.dll` 放到 `%APPDATA%\HearthstoneDeckTracker\Plugins\`（官方与团子共用此目录）。
+4. 若 DLL 来自网盘：右键 → 属性 → 「解除锁定」。
+5. 启动团子版 → 选项 → 插件 → 启用 **BG Helper Diagnostic Logger**。
+6. HDT 日志应有：`[BgHelperDiag] loaded 0.1.0; HDT=…, BobsBuddy=…`
+7. 团子对战记录目录（本机）：`C:\Program Files\HDT\对战记录\`，按日文件名如 `yyyy年MM月dd日.txt`。
 
-   也就是 `C:\Users\<你的用户名>\AppData\Roaming\HearthstoneDeckTracker\Plugins\`。没有 `Plugins` 文件夹就新建一个。
-4. 若 DLL 是从网盘下来的：右键 → 属性 → 若有「解除锁定」就勾上 → 确定。
-5. 启动 HDT → **选项 → 追踪器 → 插件** → 启用 **BG Helper Diagnostic Logger**。
-6. 看 HDT 日志（选项里可打开日志目录，或 `%APPDATA%\HearthstoneDeckTracker\Logs\hdt_log.txt`）应有类似一行：
+### B. 备选：官方版
 
-   `[BgHelperDiag] loaded 0.1.0; HDT=…, BobsBuddy=…`
-
-   - 有这行：插件在干活。
-   - 若还有 `BobsBuddyInvoker probe unavailable`：仍请继续打。实体快照和 Power 行还在，只是对不上 HDT 当场模拟输入；把该局文件夹带回来即可。
-   - 插件列表里根本没有这项：DLL 路径不对，或 HDT 没关干净就覆盖了文件。关 HDT 后重放 DLL，再开。
+按 [hsdecktracker.net](https://hsdecktracker.net/) 安装官方 HDT，同样把插件放进上述 `Plugins\`。官方版**没有**同等对战记录文本，交叉验证只能靠 diag 自身一致性 / 日后重放。
 
 点插件旁的 **Open records folder** 应打开 `%APPDATA%\HearthstoneDeckTracker\BgHelperDiag\`。
 
@@ -62,7 +59,7 @@
 
 正常打酒馆战棋即可。**先启用插件，再排队**；中途才打开插件的那一局可能不完整。
 
-每打完一局、回到菜单后，该目录下应多一个文件夹，形如 `20260926_153012_a1b2c3\`，里面至少有：
+每打完一局、回到菜单后，`BgHelperDiag\` 下应多一个文件夹，形如 `20261004_200638_13406d\`，里面至少有：
 
 | 文件 | 说明 |
 | --- | --- |
@@ -72,40 +69,41 @@
 
 **优先补样本（遇到就打，不必刻意重开）：** 带任务、对手有奥秘、Malorne、场上有畸变、战斗中有「装填 / 手牌变化」一类效果。双人可以打，插件会记，但不保证覆盖。构造模式不用管，插件不会为它们建目录。
 
-**不要做：** 用修改版 HDT；把 `records.jsonl` / 完整 Input 发到聊天或仓库；为「对手花费对不上」反复重打。
+**不要做：** 把 `records.jsonl` / 完整 Input 发到聊天或公开仓库；为「对手花费对不上」反复重打；依赖拔线「快点下一局」还指望对照实际结果。
 
 ---
 
 ## 打完后：把记录带回来
 
-拷走整个目录：
+1. 拷走 `%APPDATA%\HearthstoneDeckTracker\BgHelperDiag\` 里新增的对局文件夹（可连同 `salt.txt`；不要覆盖分析机已有盐文件）。
+2. **团子对照：** 拷走当日 `对战记录\yyyy年MM月dd日.txt`（可多日一并拷）。放到仓库侧建议路径：
+   - `data/BgHelperDiag/<game_id>/`
+   - `data/tuanzi/<yyyy年MM月dd日>.txt`
+3. 有 Python 的机器上验收示例：
 
-`%APPDATA%\HearthstoneDeckTracker\BgHelperDiag\`
+```text
+python spikes/hdt-diag-logger/tools/check_capture.py data/BgHelperDiag/<game_id> --hs-logs none
+python spikes/hdt-diag-logger/tools/eval_tuanzi_crosscheck.py data/BgHelperDiag/<game_id> data/tuanzi/<当日>.txt
+```
 
-里面应有：`salt.txt` + 若干 `日期_短id\` 对局文件夹。不要只拷其中一个文件。
+对照时看：`bb_board_ok` / `sim_ok` 应为回合全过；`result_sign_vs_median` 偶发失败（如平局 vs 高胜率预测）**单独不算解析错误**。
 
-回到有仓库的那台机器后，把这些对局文件夹放进本机同一个 `BgHelperDiag\`（不要覆盖本机已有的 `salt.txt`，两台机器的盐可以并存于各自带来的目录旁，或把新机器的 `salt.txt` 改名为 `salt-other-pc.txt` 放在旁边）。然后告诉 agent 去验收。
-
-新电脑上没有 Python 也没关系。用记事本看最新一局的 `meta.json` 即可自检：
-
-- `isBattlegroundsMatch` 为 `true`
-- `errors` 为 `0`
-- `probeInitError` 为空
-- `recordCounts` 里能看到 `entities`、`hdt_bb`
+无 Python 时，至少用记事本看 `meta.json`：`isBattlegroundsMatch=true`、`errors=0`、`probeInitError` 空、`recordCounts` 含 `entities` 与 `hdt_bb`。
 
 ---
 
 ## 版本变了怎么办
 
-官方 HDT 会自动更新。新电脑上的版本可以比 1.58.3 新，**继续用、继续记**，`meta.json` 会写下实际的 HDT / Bob's Buddy 版本。
+HDT / Bob's Buddy 会更新。`meta.json` 会写下实际版本；**继续用、继续记**。重放与分析按每局 `meta.bobsBuddy.version` 选 DLL，不要假定模拟次数永远是 9996 或 19998。
 
-只有这两种情况需要停下来联系（有开发环境后再处理）：
+只有这些情况需要停下来联系（有开发环境后再处理）：
 
 - 插件列表里加载失败，或 HDT 日志里没有 `loaded 0.1.0`
 - 每局 `meta.json` 的 `errors` 不是 0，或 `probeInitError` 有字，且你不确定是否还该继续打
+- （团子）对战记录与 diag 阵容/五率大面积对不上（不是个别 RNG 战果偏差）
 
 ---
 
 ## 隐私
 
-记录已做 BattleTag / 玩家名替换，但仍是个人对局数据，只放在本机或你自己的 U 盘 / 网盘。仓库里不放 `records.jsonl`、完整 Input JSON、BattleTag。
+记录已做 BattleTag / 玩家名替换，但仍是个人对局数据，只放在本机或你自己的 U 盘 / 网盘。仓库里不放 `records.jsonl`、完整 Input JSON、BattleTag。对战记录文本一般不含 BattleTag，可进 `data/tuanzi/` 供对照（若日后含隐私字段再改规则）。
