@@ -362,6 +362,6 @@
 - [x] ~~`TagChangeActions.cs` / `PowerHandler.cs` 中每个战斗中更新的触发条件~~ → 第 5 节
 - [x] ~~`Input`、`Player`、`Minion` 中 HDT 没有赋值的字段~~ → 第 7 节
 - [x] ~~每个字段的采集时机、对手可见性（实测确认）、版本敏感度标注（P1-T3）~~ → 上文可见性列、第 8 节第 8 条、[`diag-capture-measured.md`](diag-capture-measured.md)。标签 `2022` = 单人 BB 开战；`3533` = 战斗阶段标志 / HDT 场面快照。
-- [ ] 第 7 节未赋值成员中，哪些会被 BB 读取、影响结果（Q-013，独立进程实验，不阻塞本清单）。
+- [x] ~~第 7 节未赋值成员中，哪些会被 BB 读取、影响结果（Q-013）~~ → Player 侧六个计数器开战扰动不敏感，见 [`replay-roundtrip.md`](replay-roundtrip.md) §4；随从侧未全测。
 - [x] ~~第 8 节第 8 条（排队的标签变化动作与 `OnPowerLogLine` 的先后）~~ → 第 8 节第 8 条已改为实测结论。
 - [ ] 仍无正例：双人、畸变、Malorne、对手 Tavish 装填与 5.2 多数补录、`4803` / Volumizer / 元素额外攻血的对手非零、`2717` 是不传输还是残留。

@@ -12,13 +12,14 @@
 | --- | --- | --- | --- | --- | --- |
 | Q-002 | 能否通过反射读取 HDT 内部 `BobsBuddyInvoker._input`，作为对照基准或数据源？稳定性如何？ | 中 | **已跨 4 个 HDT / BB 小版本继续成功**（2026-10-04 批：HDT 1.58.3→1.58.6，BB 1.78.1→1.85.0，537/539 场完整 Input+Output，`probeInitError` 全空）。残留 invoker、匿名化误伤 `Player` 键见 `facts/diag-capture-batch-20261003.md`。字段级改名：1.85.0 新增 `DiscardCounter`。仍 investigating：大版本/反射成员改名时再测 | P2-T5、`spikes/hdt-diag-logger/` | investigating |
 | Q-008 | 个人对局数据量能否支撑按"同补丁 + 同回合 + 同规则"筛选的参照池？需要多少局？ | 高 | 初步估算（2026-09-25，`research/q008-personal-data-volume.md`）：活跃期约 77 局/月，一个补丁窗口约 45 局；严格分桶下只有回合 ≤12、每桶约 30 个样本能在一个补丁内攒够，再按种族或畸变分桶基本不可行。**P3-T1 设计时需要据此放宽分桶**（跨补丁合并、相邻回合合并、计入对手场面等），并请所有者确认今后的对局频率 | P3 | investigating |
-| Q-009 | 单场模拟 1.5–5 秒、占半数核心；P3 批量模拟的总耗时是否可接受？ | 中 | 已有数据：白板 7 对 7 在 6 线程下约 150 ms 完成 1 万次（`facts/bobsbuddy-public-api.md`）；团子版历史日志 968 次中位 2.3 秒。**官方版 HDT 日志（本批 3 局，进程内 6 线程）：** `Duration=` 约 74–854 ms，全部 `CompletedSimulations` / 9996 次。下一步：用诊断记录里的真实场面在**独立进程**里测，并请所有者给出可接受的耗时标准 | P3、P4 | investigating |
-| Q-011 | 离线批量模拟（P3）该用哪个版本的 `BobsBuddy.dll` 和 CardDefs？与采集时版本不一致时，结果会偏多少？ | 中 | 已知 1.78.8 删除了 1.76.0 中 Aberration 等下架卡牌的实现，HDT 运行时会下载最新 CardDefs（`facts/bobsbuddy-public-api.md`）。**2026-10-04 批已覆盖 BB 1.78.1 / 1.80.1 / 1.81.2 / 1.85.0**（`meta.json` 有版本）；1.85.0 Input 多了 `DiscardCounter`。默认策略：重放用**采集时同版本** DLL。下一步：独立进程用同一场面跑多版本对照，量化偏差 | P2-T0、P2-T1、P3 | open |
-| Q-013 | HDT 从未赋值的 BB 公开字段（如 `Player.DeepBluesCounter`、`AnySpellCounter`、`BackToBackCounter`，`Minion.SecondaryRace`、`AvengeCounter` 等）是否会在开战时被 BB 读取、影响模拟结果？ | 中 | 清单见 `facts/bobsbuddy-simulator-input.md` 第 7 节。本批 HDT Input 上这些字段 27/27 为 0。验证仍要在独立进程里对同一场面设置 / 不设置后比较（不阻塞 P1-T3） | P1-T5、P2-T4 | open |
+
 ## 已关闭
 
 | 编号 | 问题 | 结论 | 结论位置 |
 | --- | --- | --- | --- |
+| Q-009 | 单场模拟 1.5–5 秒、占半数核心；P3 批量模拟的总耗时是否可接受？ | **可接受（按默认标准）。** 真实场面独立进程模拟 `elapsedMs` 中位 411 ms（261 场，max 1046 ms）；每局全部回合模拟合计 max ≈8 s，远低于「每局 ≤ 10 分钟」。一场一进程墙钟中位 ≈1.6 s/场，仍无局超预算（2026-10-05） | `facts/replay-roundtrip.md` §2 |
+| Q-011 | 离线批量模拟该用哪个版本的 `BobsBuddy.dll`？与采集时不一致会偏多少？ | **必须用采集时同版本。** 1.78.1 场面用 1.85.0 重跑：40 场中 3 场五率显著偏（Δwin 最高约 0.23）。默认策略不变；缺 DLL 的版本跳过重放（2026-10-05） | `facts/replay-roundtrip.md` §3 |
+| Q-013 | HDT 从未赋值的 BB 公开字段开战时是否影响模拟结果？ | **对本批测的六个 Player 计数器：不影响。** 30 场将双方 `DeepBluesCounter`/`AnySpellCounter`/`BackToBackCounter` 设为 7 后五率均无显著变化。不要求单独采集这些字段；随从侧未赋值成员未全测（2026-10-05） | `facts/replay-roundtrip.md` §4 |
 | Q-001 | `BobsBuddy.dll` 中 `Input`、`Player`、`Minion`、`SimulationRunner` 等类型是否公开，插件能否自行构造输入并调用模拟？ | 能。核心类型全部 `public`、可直接构造；独立 net472 x64 进程里调用 `SimulateMultiThreaded`，在 1.76.0 和 1.78.8 上都得到符合预期的结果。两个版本间核心 API 只有 `Player.MagnetizeCounter` 一处签名变化（2026-09-25） | `facts/bobsbuddy-public-api.md`、`spikes/bobsbuddy-api/` |
 | Q-003 | HDT 自身和 `BobsBuddy.dll` 的许可条款是否允许个人插件引用和调用？ | 两者均为专有软件，条款只授予个人非商业使用。所有者确认：本机个人非商业使用相容；调用公开 API 与实时显示战力分位均为合理用途；仓库可公开但不得含 HDT/BB 二进制或反编译代码（2026-09-25） | `facts/licensing.md`、ADR-0006、ADR-0002 |
 | Q-004 | HDT 日志中"Simulation Input / Output"段落是否足以重建输入？能否作为采集正确性的对照基准？ | 不能完整重建，只能近似。日志有随从（名字、攻血、关键词、金色、`ScriptDataNum`、附魔名）、场上顺序、英雄技能、任务、奥秘名和约一半计数器；缺英雄血量/护甲/等级、饰品、目标、畸变、可用种族、伤害上限和另一半计数器。Output 只有胜/平/负率、致死率、次数和耗时，没有伤害分布；可以作为 P2-T5 胜/平/负的对照，但只宜用每场只有一个 Input 段落的样本，并接受缺失字段带来的偏差（2026-09-25） | `facts/hdt-log-simulation-input.md`、`spikes/hdt-log-analysis/` |
