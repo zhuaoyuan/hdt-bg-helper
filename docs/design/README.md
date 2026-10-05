@@ -28,4 +28,4 @@
 | [P2-data-capture](P2-data-capture.md) | P2-T1 数据采集短方案（原始层=diag；标准层=离线导入） | approved |
 | [P3-T0-core-hypothesis](P3-T0-core-hypothesis.md) | P3-T0 战力分位核心假设早期验证（全交叉） | implemented |
 | [P3-T1-strength-engine](P3-T1-strength-engine.md) | P3-T1 战力分位引擎：参照池与放宽、抽样、缓存、置信区间（含 P3-T2/T3 边界） | review |
-| [P3-board-render](P3-board-render.md) | P3-T6 局面阵容图离线渲染（复盘视图组件） | review |
+| [P3-board-render](P3-board-render.md) | P3-T6 局面阵容图离线渲染（单侧单元；ADR-0012） | approved |

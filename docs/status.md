@@ -16,13 +16,13 @@
 ## 进行中
 
 - **P3-T1 设计方案（review）**（2026-10-05）：[`design/P3-T1-strength-engine.md`](design/P3-T1-strength-engine.md) + [ADR-0011](decisions/0011-strength-pool-round-robin.md)（proposed）。要点：BB 版本 + 回合分桶；留一局循环赛定义分位；确定性参照面板（上限 K 局）控制增量成本；放宽阶梯 L0 → L1（t±1）→ L2（跨版本，默认关）→ `insufficient`；按局聚类 bootstrap + 蒙特卡洛噪声；SQLite 缓存存胜/平/负次数，可补跑合并。补测：交叉对反对称只近似成立（2.8% 的对偏差 >0.05），不用它省成本（`facts/strength-cross-p3t0.md` §10）。新增 Q-016（新版本冷启动）。
-- **P3-T6 局面阵容图渲染方案（review）**（2026-10-05）：[`design/P3-board-render.md`](design/P3-board-render.md)。Python + Pillow 新包 `tools/board_render`，复用 `standard_layer.combat`；开战快照为主、BB 输入为后备；卡图三级缓存（本地 → HDT 缓存只读 → HSJSON）；自绘边框与角标，不用 HDT 贴图。未写代码。
+- **P3-T6 局面阵容图渲染方案（approved）**（2026-10-05）：[`design/P3-board-render.md`](design/P3-board-render.md) + [ADR-0012](decisions/0012-board-render-side-unit.md)。核心为无状态 `render_side`；本机可读 HDT 贴图；v1 只画随从。未写代码。
 
 ## 下一步（按优先级）
 
 1. **所有者：审阅 P3-T1 方案与 ADR-0011**（见下方"阻塞"）。
-2. **所有者：审阅 P3-T6 阵容图方案**；通过后 agent 按方案 §7 的 T6.1 → T6.4 实现（与 P3-T1 互不依赖，可并行）。
-3. **agent（审阅通过后）：校准实验 E1–E3（E5 可选）** — 迭代次数（Q-015）、面板上限 K、\(G_\text{min}\) 与 turn±1 权重；结果写 `facts/strength-calibration.md`，填方案 §3.9 默认参数表，再进 P3-T2。
+2. **agent：实现 P3-T6**（方案已批准）— 按 `design/P3-board-render.md` §7 的 T6.1 → T6.4；与 P3-T1 互不依赖，可并行。
+3. **agent（P3-T1 审阅通过后）：校准实验 E1–E3（E5 可选）** — 迭代次数（Q-015）、面板上限 K、\(G_\text{min}\) 与 turn±1 权重；结果写 `facts/strength-calibration.md`，填方案 §3.9 默认参数表，再进 P3-T2。
 4. **所有者（可选）：** 继续团子版 + 0.2.0 采集（名次标签供 P3-T4）；`git push` 发布 `main`。
 
 ## 待决事项默认值（所有者未否决即按此执行）
@@ -34,6 +34,7 @@
 | Q-005 CI 与托管 | 暂不做 CI，只在本机构建 |
 | 个人采集环境 | **团子版 + 对战记录对照**（ADR-0008） |
 | ADR-0004 / ADR-0010 | **已接受** |
+| ADR-0012 | **已接受**（单侧阵容渲染单元；本机 HDT 贴图；v1 只画随从） |
 | ADR-0003 | P3-T0 **不推翻**；有效性主验证在 P3-T4（名次/后续指标） |
 | P2 退出样本数 | **已关闭**（7 局提前退出） |
 
@@ -43,7 +44,3 @@
   1. 分位语义改为"留一局循环赛 + 确定性参照面板"（ADR-0011）。默认参照群体包含对手场面（己方 + 非幽灵对手），保留"只用己方"开关。
   2. 按 BB 版本分桶的代价：每次 HDT 带新 BB 版本发布后，前几天会显示 `insufficient`。跨版本放宽 L2 默认关闭，等 E5 / Q-016 的结论。
   3. P3 退出标准修订建议（方案 §5）：区间宽度"全部 ≤20"改为"中位 ≤15 且 ≥80% ≤20"；增量信息改在名次标签上与 HDT 比较。
-- **P3-T6 阵容图方案待审阅**，需要所有者判断：
-  1. 一张图同时画双方（上对手、下己方），还是像 HDT 一样只画对手。
-  2. 边框和角标自绘（默认，不碰 HDT 资源），还是允许在本机读取 HDT 贴图作为可选皮肤。
-  3. v1 范围只画随从 + 英雄 + 五率/战果；饰品、英雄技能、奥秘留到以后。

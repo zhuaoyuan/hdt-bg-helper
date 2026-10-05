@@ -1,42 +1,40 @@
 # 方案：局面阵容图离线渲染
 
-- **状态：** review
+- **状态：** approved（所有者 2026-10-05 确认三点，见 [ADR-0012](../decisions/0012-board-render-side-unit.md)）
 - **任务：** P3-T6（新增；P3-T5 复盘视图的组件，可先于 T5 单独交付）
 - **作者 / 日期：** agent / 2026-10-05
-- **相关：** `facts/hdt-past-opponent-board-render.md`、`facts/standard-layer-import.md`、`facts/diag-tuanzi-compat-20261004.md`、`facts/licensing.md`、ADR-0006、ADR-0010
+- **相关：** ADR-0012、`facts/hdt-past-opponent-board-render.md`、`facts/standard-layer-import.md`、`facts/licensing.md`、ADR-0006、ADR-0010
 
 ## 1. 目标与非目标
 
-**目标：** 给诊断记录里的任意一场战斗，离线生成一张 PNG 局面图，信息量不低于 HDT 悬停头像时显示的“上次对手阵容条”。
+**目标：** 提供无状态的**单侧随从横排**渲染单元：给定一侧场面数据，离线画出一张 PNG，随从信息量不低于 HDT 悬停头像时阵容条上的单个随从（肖像、攻血、金色、关键词角标）。
 
-| 图中元素 | 内容 |
+| 图中元素（v1） | 内容 |
 | --- | --- |
-| 两排随从 | 上排对手、下排己方，按场上顺序；每个随从画圆形肖像、攻/血数字、金色边框 |
-| 关键词角标 | 嘲讽、圣盾、亡语、复生、剧毒、毒液；另加 HDT 没画的风怒、潜行 |
-| 标题行 | 回合、双方英雄（中文名 + 头像）、HDT 当场五率（胜/平/负）、实际战果与伤害（有则显示） |
+| 一排随从 | 按场上顺序；每个：圆形肖像、攻/血、金色边框、关键词角标 |
+| 关键词 | 嘲讽、圣盾、亡语、复生、剧毒、毒液；另加 HDT 控件未画的风怒、潜行（有贴图用贴图，否则自绘字标） |
 
-“做完”的判据：§5 的验收全部通过；能用一条命令为一局的全部战斗出图。
+“做完”的判据：§5 验收通过；核心库能对任意一侧 `list[MinionView]` 出图；CLI 能从诊断记录抽出己方或对手侧并批量出图。
 
-**非目标：**
+**非目标（v1）：**
 
-- 不画附魔细则、手牌、奥秘、饰品、英雄技能、神祇、三连统计（v1 不画；数据在 dump 里，以后需要再加）。
-- 不在 HDT 里显示，不做实时叠加层（那是 P4）。
-- 不复制、不再分发 HDT 的贴图（`Resources/Minion/*.png`）；边框和角标自己画。
-- 不做双人模式（数据结构留口子，渲染不处理队友场面）。
+- 不在图上画英雄、五率、战果、附魔细则、手牌、奥秘、饰品、英雄技能、神祇、三连（可后续解耦；数据抽取可先保留在 `board.py` 供上层用，但不进 `render_side`）。
+- 不把「双方并排 / 跨局对战」绑进核心 API；需要时由调用方对两侧各渲一次再拼接。
+- 不在 HDT 里显示，不做实时叠加层（P4）。
+- 不把 HDT 贴图复制进仓库或随项目分发（本机只读，见 ADR-0012）。
+- 不做双人队友场面（数据结构可留口子）。
 
 ## 2. 依据
 
 | 依据 | 对方案的约束 |
 | --- | --- |
-| `hdt-past-opponent-board-render` §2.1 | 每场 `entities@combat_start` 与 HDT `BoardSnapshot` 同构，样本回合与 BB `Side` 一一对齐 → **首选数据源** |
-| 同上 §2.2 | BB `Side.items` 没有亡语字段，金色随从的 `CardID` 不带 `_G` → 只作**后备**（开战快照缺失时用） |
-| 同上 §3 + 本次实测 | HSJSON 的随从 256x 肖像（含 `_G` 金色版）和英雄头像 `heroes/latest/256x/{id}.png` 直连均返回 200；本机 HDT 缓存 `Images/CardPortraits` 有约 222 张；卡牌 JSON 见 §3.7 |
-| `standard-layer-import` | `tools.standard_layer.combat.iter_game_combats` 已经把每场战斗切好，并带 `entities`、`input`、`output`、英雄名 → 渲染器直接复用，不重写解析 |
-| `licensing` / ADR-0006 | HDT 资源属专有内容 → 自绘图形；卡图来自 HSJSON（暴雪版权，只在本地缓存，不入库） |
-| 隐私规则（AGENTS.md §6.5） | 图里只画卡牌和英雄，不写 BattleTag；输出放在 `data/` 下（已 gitignore） |
-| 本机环境 | Python 3.10 + Pillow 10.4 已装；`C:\Windows\Fonts\msyh.ttc` 可画中文英雄名 |
-
-没有未决问题卡住本方案。
+| ADR-0012 | 单侧无状态单元；本机 HDT 贴图优先；v1 只画随从 |
+| `hdt-past-opponent-board-render` §2.1 | `entities@combat_start` 与 HDT `BoardSnapshot` 同构 → **首选抽取源** |
+| 同上 §2.2 | BB `Side.items` 无亡语字段、金色 `CardID` 常无 `_G` → **后备** |
+| 同上 §3 | HSJSON 肖像可达；HDT `CardPortraits` 可只读复用；边框/角标在 HDT `Resources/Minion/*.png`（`App.xaml:47–59`） |
+| `standard-layer-import` | 复用 `iter_game_combats`，不重写战斗切分 |
+| `licensing` / ADR-0006 | 本机个人非商业可读 HDT 资源；**不入库、不分发** |
+| 本机环境 | Python 3.10 + Pillow 10.4；`msyh.ttc` 可用 |
 
 ## 3. 方案
 
@@ -44,34 +42,36 @@
 
 ```mermaid
 flowchart LR
-  A[诊断记录目录] --> B[standard_layer.combat<br/>iter_game_combats]
-  B --> C[board.py<br/>抽取 BoardView]
-  D[art.py<br/>素材缓存] --> E[render.py<br/>Pillow 出图]
+  A[诊断记录] --> B[standard_layer.combat]
+  B --> C[board.py<br/>SideBoard / MinionView]
+  D[chrome.py<br/>HDT贴图或自绘] --> E[render_side]
+  F[art.py<br/>肖像缓存] --> E
   C --> E
-  F[turns.jsonl 可选<br/>战果与伤害] --> E
-  E --> G[data/boards/局id/T05.png]
+  E --> G[单侧 PNG]
+  G -.-> H[可选：调用方拼接双方/跨局]
 ```
 
 新建包 `tools/board_render/`：
 
 | 文件 | 职责 |
 | --- | --- |
-| `board.py` | 把一场战斗转换成 `BoardView`；不碰网络和图像 |
-| `art.py` | 按 CardId 取肖像：先查本地缓存，再查 HDT 缓存（只读），再从 HSJSON 下载；都失败就返回 `None` |
-| `cards.py` | 读卡牌库，只提供基础攻血（§3.7） |
-| `render.py` | 根据 `BoardView` 和素材画 PNG；布局常量集中放在文件开头 |
-| `__main__.py` | 命令行入口 |
-| `test_board.py` / `test_render.py` | 单元测试（使用手写的小样本，不依赖本机数据） |
+| `board.py` | 从一场战斗抽出一侧或多侧的 `list[MinionView]`；不碰网络和图像 |
+| `art.py` | 随从肖像：本地缓存 → HDT CardPortraits（只读）→ HSJSON |
+| `chrome.py` | 边框/角标：探测本机 HDT 资源或 `--chrome-dir`；失败则自绘 |
+| `cards.py` | 可选：基础攻血（绿色高亮）；取不到则白字 |
+| `render.py` | `render_side(minions, …) → Image`；布局常量集中在文件头 |
+| `__main__.py` | CLI：按局/回合/侧批量出图；可选 `--compose both` 做简单上下拼接（非核心） |
+| `test_*.py` | 手写样本；不依赖本机对局数据 |
 
 ### 3.2 数据结构
 
 ```python
 @dataclass
 class MinionView:
-    card_id: str          # 用于取图；金色时为 *_G
-    base_card_id: str     # 去掉 _G 后的基卡 id，用于对照
+    card_id: str          # 取图用；金色优先 *_G
+    base_card_id: str
     attack: int
-    health: int           # HEALTH - DAMAGE（开战时通常 DAMAGE=0）
+    health: int           # HEALTH - DAMAGE
     golden: bool
     taunt: bool
     divine_shield: bool
@@ -81,105 +81,107 @@ class MinionView:
     venomous: bool
     windfury: bool
     stealth: bool
-    position: int         # 场上位置，从 1 开始
+    position: int         # 从 1 起
 
 @dataclass
-class BoardView:
-    game_id: str
-    combat: int
-    turn: int | None
+class SideBoard:
+    """无状态单侧场面；不绑定己方/对手语义。"""
+    minions: list[MinionView]
     source: str           # "entities" | "input"
-    my_hero: tuple[str | None, str | None]    # (中文名, CardId)
-    opp_hero: tuple[str | None, str | None]
-    my_minions: list[MinionView]
-    opp_minions: list[MinionView]
-    win_tie_loss: tuple[float, float, float] | None   # HDT 当场五率中的胜/平/负
-    result: str | None    # 来自 turns.jsonl；没有就留空
-    damage: int | None
+    label: str | None = None   # 仅元数据，默认不画进图
 ```
+
+核心渲染签名：
+
+```python
+def render_side(side: SideBoard, *, art: ArtStore, chrome: ChromeStore) -> Image.Image: ...
+```
+
+CLI / 上层若要「本场对手」「跨局 A vs B」，各自构造两个 `SideBoard` 再决定是否拼接。
 
 ### 3.3 抽取规则（`board.py`）
 
-1. **开战快照 `entities`（首选）：** 取 `context.player.board` / `context.opponent.board` 里的实体，只留 `CARDTYPE=4`（随从）且 `ZONE=1`，按 `ZONE_POSITION` 排序。字段对应关系：`ATK`、`HEALTH−DAMAGE`、`PREMIUM`、`TAUNT`、`DIVINE_SHIELD`、`DEATH_RATTLE`、`REBORN`、`POISONOUS`、`VENOMOUS`、`WINDFURY`、`STEALTH`；卡牌 id 用 `info.LatestCardId`，为空时退回 `cardId`。
-2. **BB 输入（后备）：** 开战快照不存在、或某一方随从数为 0 但 BB 输入里有随从时使用。`CardID` + `_data.MaxAttack/MaxHealth/Golden/Taunt/Div/Reborn/Poisonous/Venomous/Windfury/Stealth`；金色时取图用 `CardID + "_G"`；亡语一律记为 `False`，并在图上用小字标注“来源：BB 输入”。
-3. **标题数据：** 英雄名取 `_playerHeroName` / `_opponentHeroName`，英雄 CardId 取 `myHeroCard` / `oppHeroCard`；五率取 `output.winRate/tieRate/lossRate`；只有传了 `--turns` 时才读 `turns.jsonl` 的 `result` / `damage`。
-4. 幽灵对手（英雄 CardId 含 `KelThuzad`）照常出图，标题加“幽灵”标记。
+1. **开战快照 `entities`（首选）：** `context.<side>.board` 中 `CARDTYPE=4` 且 `ZONE=1`，按 `ZONE_POSITION` 排序。标签：`ATK`、`HEALTH−DAMAGE`、`PREMIUM`、`TAUNT`、`DIVINE_SHIELD`、`DEATH_RATTLE`、`REBORN`、`POISONOUS`、`VENOMOUS`、`WINDFURY`、`STEALTH`；卡牌 id 用 `info.LatestCardId`，否则 `cardId`。
+2. **BB 输入（后备）：** 快照缺失或该侧随从为空但 Input 有随从时。`CardID` + `_data` 的 Max 攻血与关键词；金色取图 `CardID+"_G"`；`deathrattle=False`（无法从 Input 可靠得到）。
+3. CLI 的 `--side player|opponent|both` 只影响「从哪一侧抽取 / 是否各渲一张」，不改变 `render_side`。
 
-### 3.4 素材缓存（`art.py`）
+### 3.4 肖像（`art.py`）
 
-| 顺序 | 位置 | 说明 |
-| --- | --- | --- |
-| 1 | `data/art_cache/portraits/{id}.jpg`、`data/art_cache/heroes/{id}.png` | 本项目自己的缓存，已被 gitignore |
-| 2 | `%APPDATA%\HearthstoneDeckTracker\Images\CardPortraits\{id}.jpg` | HDT 的缓存，**只读**，命中后复制到本地缓存 |
-| 3 | `https://art.hearthstonejson.com/v1/256x/{id}.jpg`、`.../heroes/latest/256x/{id}.png` | 下载超时 10 秒，单线程，同一次运行中失败过的 id 不再重试 |
+| 顺序 | 位置 |
+| --- | --- |
+| 1 | `data/art_cache/portraits/{id}.jpg` |
+| 2 | `%APPDATA%\HearthstoneDeckTracker\Images\CardPortraits\{id}.jpg`（只读，命中后可复制到本地缓存） |
+| 3 | `https://art.hearthstonejson.com/v1/256x/{id}.jpg`（`--offline` 跳过） |
 
-- 金色随从先找 `{id}_G`，没有再退回基卡 id（画面上仍画金色边框）。
-- 加 `--offline` 参数时跳过第 3 步。取不到的图画成灰色圆，中间写 CardId；统计数量写进运行摘要。
+缺图：灰色圆 + CardId；计入 `summary.json`。
 
-### 3.5 布局（`render.py`）
+### 3.5 边框与角标（`chrome.py`）
 
-- 画布固定 1280×560，深色背景（参考 HDT 的 `#202427`）。
-- 标题行高 80：左边是对手英雄头像 + 名字，右边是己方英雄头像 + 名字，中间写 `T5 · 胜 53.3% / 平 6.1% / 负 40.6% · 实际：赢 4`。
-- 对手一排、己方一排，每排最多 7 个随从，水平居中；每个随从格 150×200。
-- 随从格的画法：椭圆裁剪的肖像；外圈边框（普通为灰色，金色为金黄色）；左下角画攻击、右下角画生命（白字黑描边，比卡面基础值高时用绿色，和 HDT 一致；基础值见 §3.7，取不到就一律白色）；关键词用格子上方一排小圆角标签（“嘲”“盾”“亡”“生”“毒”“液”“风”“潜”），不去模仿游戏内特效。
-- 字体：`msyh.ttc`；找不到时用 Pillow 自带字体，并给出警告。
+| 顺序 | 来源 |
+| --- | --- |
+| 1 | `--chrome-dir`（若指定）下的 PNG，文件名对齐 HDT：`border.png`、`border_premium.png`、`taunt.png`、`taunt_premium.png`、`divine-shield.png`、`deathrattle.png`、`reborn.png`、`poisonous.png`、`venomous.png`、`stats.png`、`stats_premium.png` 等（见 `App.xaml:47–59`） |
+| 2 | 本机已安装 HDT 目录内可解析到的同名资源（Squirrel `app-*` 或从 exe 旁探测；实现时写清探测顺序） |
+| 3 | 自绘回退（灰/金椭圆边框 + 短字标签） |
 
-### 3.6 命令行
+**禁止**把这些 PNG 写入 git。文档与 `--help` 注明：仅本机个人使用。
+
+### 3.6 布局（`render_side`）
+
+- 单行画布：高度固定（约 200–220），宽度随随从数伸缩（每格约 150，最多 7，可加左右边距）；深色底 `#202427`。
+- 随从格：椭圆裁剪肖像；叠 chrome 边框/角标；左下攻、右下血（相对卡面基础值偏高时绿色，见 §3.8）。
+- 默认**不**画标题、英雄、五率。
+
+### 3.7 命令行
 
 ```powershell
-python -m tools.board_render --game ed11e0 --out data\boards
-python -m tools.board_render --game ed11e0 --turn 5 --out data\boards --turns data\standard_paired7\turns.jsonl
-python -m tools.board_render --game ed11e0 --offline --out data\boards
+python -m tools.board_render --game ed11e0 --side opponent --out data\boards
+python -m tools.board_render --game ed11e0 --side player --turn 5 --out data\boards
+python -m tools.board_render --game ed11e0 --side both --compose --out data\boards
+python -m tools.board_render --game ed11e0 --offline --chrome-dir D:\path\to\Minion --out data\boards
+python -m tools.board_render --check --game ed11e0
 ```
 
-- `--game` 匹配局 id 后缀，和 `standard_layer` 的用法一致。
-- 输出文件：`{out}\{gameId}\T{turn:02d}_c{combat}.png`，另写一份 `summary.json`（每张图的来源、随从数、缺图数）。
+- `--side both`：每场战斗输出两张（`…_player.png` / `…_opponent.png`）；加 `--compose` 时再额外写一张上下拼接图（便利，非验收核心）。
+- 输出：`{out}\{gameId}\T{turn:02d}_c{combat}_{side}.png` + `summary.json`。
 
-### 3.7 卡牌基础攻血（用于绿色高亮）
+### 3.8 卡牌基础攻血（可选绿色高亮）
 
-在 `art.py` 旁边加一个只读的卡牌库读取器（`cards.py`），只用来取基础攻血；拿不到就不做绿色高亮，其他照常画。不引入 HearthDb.dll。
-
-| 顺序 | 来源 | 本机实测（2026-10-05） |
-| --- | --- | --- |
-| 1 | `data/art_cache/cards.zhCN.json` | 本项目缓存 |
-| 2 | HDT 的 `%APPDATA%\HearthstoneDeckTracker\CardDefs\CardDefs.*.xml`（`CardDefsManager.cs:24–40` 的路径，只读） | 本机**没有**这个目录 |
-| 3 | `https://api.hearthstonejson.com/v1/latest/zhCN/cards.json`（约 10 MB） | 直连超时；走本机代理 `127.0.0.1:1081` 返回 200 |
-
-下载代码沿用环境变量 `https_proxy`（与 AGENTS.md §7 的代理用法一致）。卡图域名 `art.hearthstonejson.com` 本机直连就能访问。这份 JSON 还带中文卡名，以后需要在随从下方加名字时可以直接用。
+同前：`cards.py` 读 `data/art_cache/cards.zhCN.json` → 可选 HDT CardDefs → HSJSON（可走 `https_proxy`）。失败则攻血一律白字。
 
 ## 4. 考虑过的替代方案
 
 | 方案 | 不选的原因 |
 | --- | --- |
-| 在 HDT 进程里写插件，复用 `BattlegroundsMinion` 控件，用 WPF `RenderTargetBitmap` 截图 | 必须开着 HDT；控件绑定 `Core.Game` 的实时实体，我们的 dump 要先还原成 `Entity`；依赖 HDT 内部类型，升级容易坏；复盘时 HDT 不一定在运行 |
-| 生成 HTML/SVG，直接引用 HSJSON 的图片链接 | 不是独立文件，查看时必须联网，也不好嵌到报告或聊天里；以后做 P3-T5 网页复盘时可以复用 `BoardView`，再考虑 |
-| 单独的 C# WPF 离线渲染程序 | 要另建工程、调 WPF 无头渲染，比 Python + Pillow 重；现有离线工具链都是 Python |
-| 只用 BB 输入不用开战快照 | 缺亡语、金色 id 要猜；开战快照本来就有，而且与 HDT 的显示同源 |
+| 固定双方 + 标题元数据一张图 | 所有者要求单侧单元以支持跨局组合（ADR-0012） |
+| 只仿 HDT 画对手 | 无法画己方/跨局 |
+| 永远自绘 chrome | 所有者允许本机 HDT 贴图 |
+| 进程内复用 WPF `BattlegroundsMinion` | 依赖运行中的 HDT 与实时 Entity |
+| v1 就画英雄/五率/战果 | 所有者要求与随从解耦，后续再加 |
 
 ## 5. 验收方式
 
 | # | 验收项 | 怎么跑 | 通过标准 |
 | --- | --- | --- | --- |
-| 1 | 抽取单元测试 | `python -m unittest discover -s tools\board_render -p "test_*.py" -v` | 手写小样本覆盖：排序、金色 `_G`、关键词、`DAMAGE` 扣血、后备路径、幽灵标记 |
-| 2 | 两种来源一致性 | `python -m tools.board_render --check --game …`（配对 7 局） | 同时有开战快照和 BB 输入的 `ready` 战斗中，双方 (基卡 id, 攻, 血, 金色, 嘲讽, 圣盾) 的列表**顺序与内容 100% 一致**；不一致逐条列出 |
-| 3 | 出图冒烟 | 对 `ed11e0` 全局出图 | 每场战斗 1 张 PNG，尺寸 1280×560；`summary.json` 中缺图数在联网时为 0 |
-| 4 | 离线模式 | 预热缓存后加 `--offline` 再跑一次 | 不发网络请求，输出与第 3 项逐像素一致 |
-| 5 | 人工核对 | 所有者挑 3 张图，对照团子对战记录（或对局时 HDT 悬停截图） | 随从、顺序、攻血、金色与记录一致；关键词无漏画 |
+| 1 | 抽取单元测试 | `python -m unittest discover -s tools\board_render -p "test_*.py" -v` | 排序、金色 `_G`、关键词、`DAMAGE`、后备路径 |
+| 2 | 两种来源一致性 | `python -m tools.board_render --check --game …`（配对局） | 同场同侧 entities vs BB：`(基卡 id, 攻, 血, 金色, 嘲讽, 圣盾)` 列表 100% 一致 |
+| 3 | 单侧出图冒烟 | `ed11e0`、`--side opponent`（及 `player`） | 每场每侧 1 张 PNG；联网时肖像缺图数为 0（或仅文档注明的未知卡） |
+| 4 | 离线 + chrome | 预热肖像后 `--offline`；有/无 `--chrome-dir` 各跑一次 | 离线不联网；无 chrome 时仍出图（自绘回退） |
+| 5 | 人工核对 | 所有者挑 ≥3 张单侧图，对照团子阵容或 HDT 悬停 | 随从、顺序、攻血、金色、可见关键词一致 |
 
 ## 6. 风险与回退
 
 | 风险 | 回退 |
 | --- | --- |
-| HSJSON 不可用或某张新卡还没有图 | 用 HDT 缓存；再不行画占位圆 + CardId，不影响其他元素 |
-| 开战快照里某些变形随从的 `LatestCardId` 与显示不一致 | 一致性检查（验收 2）会暴露出来；必要时改为与 BB 输入的 `CardID` 对齐 |
-| 自绘角标不如 HDT 好看 | v1 以信息正确为准；以后可让所有者在本机指定 HDT 资源目录作为可选皮肤（不入库） |
-| 战斗中才揭示的信息（如对手奥秘）不在开战快照里 | v1 不画奥秘；阵容条与 HDT 一样只反映开战瞬间 |
+| 找不到 HDT 贴图（嵌入 exe、路径因版本变） | 自绘；接受观感差距 |
+| HSJSON / 肖像缺失 | 占位圆；不阻断批量 |
+| entities 与 BB 卡牌 id 不一致 | `--check` 暴露；必要时取图优先 BB `CardID`+`Golden` |
+| 拼接双方的边距/比例不满意 | 调整仅在调用方 / `--compose`，不动 `render_side` 契约 |
 
 ## 7. 任务拆分
 
 | 步骤 | 内容 | 单独验证 |
 | --- | --- | --- |
-| T6.1 | `board.py` + `test_board.py` + `--check` 一致性报告 | 验收 1、2 |
-| T6.2 | `art.py` + `cards.py`（三级缓存、离线模式、基础攻血） | 小测试：缓存命中顺序、离线不联网、卡牌库缺失时不报错 |
-| T6.3 | `render.py` + `__main__.py` + `summary.json` | 验收 3、4 |
-| T6.4 | 所有者人工核对 + 补事实文档 + 更新 status/roadmap | 验收 5 |
+| T6.1 | `board.py` + `test_board.py` + `--check` | 验收 1、2 |
+| T6.2 | `art.py` + `chrome.py` + `cards.py` | 缓存顺序、offline、无 chrome 回退 |
+| T6.3 | `render_side` + CLI（含可选 `--compose`） | 验收 3、4 |
+| T6.4 | 所有者人工核对；更新 status/roadmap | 验收 5 |

@@ -38,3 +38,4 @@
 | [ADR-0009](0009-allow-disconnect-reconstruct-results.md) | 采集期允许拔线，拔线回合的战果由上下文还原 | accepted |
 | [ADR-0010](0010-hdt-input-dump-as-primary-source.md) | 以 HDT `_input` 反射转储为主数据源，实体快照为后备 | accepted |
 | [ADR-0011](0011-strength-pool-round-robin.md) | 战力分位采用"同版本同回合、留一局循环赛 + 确定性参照面板" | proposed |
+| [ADR-0012](0012-board-render-side-unit.md) | 阵容图以无状态单侧渲染为单元，允许本机 HDT 贴图 | accepted |
