@@ -3,23 +3,22 @@
 > 这份文档回答：项目现在在哪一步、下一步做什么、有什么阻塞。每次会话结束时由 agent 更新。
 
 **最后更新：** 2026-10-05
-**当前阶段：** P3 — 战力评估引擎（离线）；**P2 已提前退出**；**P3-T0 已完成**；**P3-T1 方案已批准**；**P3-T6 代码已交付（待人工核对）**
+**当前阶段：** P3 — 战力评估引擎（离线）；**P2 已提前退出**；**P3-T0 / P3-T6 已完成**；**P3-T1 方案已批准**
 
 ## 最近完成
 
-- **P3-T6 局面阵容图离线渲染（代码）**（2026-10-05）：分支 `feat/P3-T6-board-render`；`tools/board_render/` 实现无状态 `render_side` + CLI。验收 1–4：unittest 22；ed11e0 `--check` 24/24；联网出图缺肖像 0；`--offline` / 自绘 chrome 均可出图。输出在 `data/boards/`（gitignore）。**待所有者人工核对 ≥3 张**后 roadmap 打勾。见 [`worklog/2026-10-05-p3t6-board-render.md`](worklog/2026-10-05-p3t6-board-render.md)、[`design/P3-board-render.md`](design/P3-board-render.md)。
+- **P3-T6 局面阵容图离线渲染**（2026-10-05）：验收 1–5 全部通过（所有者确认样本图没问题）。`tools/board_render/`；分支 `feat/P3-T6-board-render` **尚未合并 main**。见 [`worklog/2026-10-05-p3t6-board-render.md`](worklog/2026-10-05-p3t6-board-render.md)、[`design/P3-board-render.md`](design/P3-board-render.md)。
 - **P3-T1 方案批准**（2026-10-05）：ADR-0011 + `design/P3-T1-strength-engine.md` → approved。
 - **局面阵容图渲染可行性调研**（2026-10-05）：见 [`facts/hdt-past-opponent-board-render.md`](facts/hdt-past-opponent-board-render.md)。
 - **P3-T0 / P2 提前退出 / 插件 0.2.0**（2026-10-05）：见既有 worklog。
 
 ## 进行中
 
-- **P3-T6 验收 5**：所有者对照团子/HDT 悬停核对 ≥3 张单侧图（建议 `data/boards/20261005_104908_ed11e0/T05_c5_*.png` 等）。
 - **P3-T1 校准实验**（方案已批准，参数未定）：E1–E3（E5 可选）。
 
 ## 下一步（按优先级）
 
-1. **所有者：P3-T6 人工核对 ≥3 张** — 通过后合并 `feat/P3-T6-board-render` → `main`，roadmap 打勾。
+1. **所有者（可选）：** 合并 `feat/P3-T6-board-render` → `main`（或授权 agent 合并）。
 2. **agent：P3-T1 校准实验 E1–E3（E5 可选）** — 填 §3.9 后进 P3-T2。
 3. **所有者（可选）：** 继续团子版 + 0.2.0 采集；`git push` 发布 `main`。
 
@@ -40,4 +39,4 @@
 
 ## 阻塞 / 需要所有者决定
 
-- **P3-T6：** 人工核对 `data/boards/20261005_104908_ed11e0/` 中 ≥3 张单侧 PNG（随从、顺序、攻血、金色、可见关键词）。通过后合并分支。
+- 无（P3-T6 合并 main 为可选操作，不阻塞 P3-T1）。

@@ -1,6 +1,6 @@
 # 方案：局面阵容图离线渲染
 
-- **状态：** implemented（代码 2026-10-05；验收 5 待所有者人工核对 ≥3 张图）
+- **状态：** implemented（2026-10-05；验收 5 所有者确认通过）
 - **任务：** P3-T6（新增；P3-T5 复盘视图的组件，可先于 T5 单独交付）
 - **作者 / 日期：** agent / 2026-10-05
 - **相关：** ADR-0012、`facts/hdt-past-opponent-board-render.md`、`facts/standard-layer-import.md`、`facts/licensing.md`、ADR-0006、ADR-0010
@@ -184,7 +184,7 @@ python -m tools.board_render --check --game ed11e0
 | T6.1 ✅ | `board.py` + `test_board.py` + `--check` | 验收 1、2：12 unittest；ed11e0 `--check` 24/24 |
 | T6.2 ✅ | `art.py` + `chrome.py` + `cards.py` | 缓存顺序、offline、无 chrome 回退 |
 | T6.3 ✅ | `render_side` + CLI（含可选 `--compose`） | 验收 3、4：ed11e0 缺图 0；offline / drawn 均可出图 |
-| T6.4 ⏳ | 所有者人工核对；更新 status/roadmap | 验收 5（待所有者） |
+| T6.4 ✅ | 所有者人工核对；更新 status/roadmap | 验收 5：所有者 2026-10-05 确认没问题 |
 
 ## 8. 实现记录
 
