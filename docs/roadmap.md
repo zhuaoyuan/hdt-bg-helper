@@ -58,7 +58,7 @@
 - [x] P3-T1 设计方案 + 校准：参照池/放宽/抽样/缓存/置信区间。方案 `design/P3-T1-strength-engine.md`（**approved**）+ [ADR-0011](decisions/0011-strength-pool-round-robin.md)（**accepted**）。校准 E1–E5：`facts/strength-calibration.md`（2026-10-05：iterations=500，K=30，\(G_\text{min}=6\)，\(w_\text{relax}=0.25\)+L1，L2 关；Q-015/Q-016 关闭）
 - [x] P3-T2 批量模拟服务（状态哈希去重、结果缓存、模拟器版本标记）：`tools/ReplaySim` + `tools/strength`；验收见 `facts/strength-batch-p3t2.md`（2026-10-05）
 - [x] P3-T3 分位计算与不确定度输出：`tools/strength` 循环赛 \(S/Q\) + 聚类 bootstrap + `strength.jsonl`；验收见 `facts/strength-percentile-p3t3.md`（2026-10-05）。**已合入 `main`**；宽度门槛见 [ADR-0014](decisions/0014-relax-p3-exit-width.md)（中位 ≤25 / ≥80% ≤30）
-- [ ] P3-T4 指标有效性评估（区分度、稳定性、与名次/后续血量的关系；相对 HDT 的增量在名次标签上比）
+- [x] P3-T4 指标有效性评估（区分度、稳定性、与名次/后续血量的关系；相对 HDT 的增量在名次标签上比）：`tools/strength_validity`；结论见 `facts/strength-validity-p3t4.md`（2026-10-05）。**退出第 3 条：样本不足无法判定**（配对局 n=7）；ADR-0003 证据不足、未推翻
 - [x] P3-T5 复盘视图原型（按回合展示分位、置信度、实际对手和结果）：`tools/review_view` 静态 HTML；见 `design/P3-T5-review-view.md`（2026-10-05；验收 5 待所有者人工核）
 - [x] P3-T6 **局面阵容图离线渲染**（P3-T5 的组件，可单独交付）：无状态单侧随从横排 PNG（`tools/board_render/` `render_side`）；本机 HDT 贴图；v1 只画随从。验收 1–5 通过（所有者 2026-10-05 确认）；已合入 `main`。方案 `design/P3-board-render.md`（implemented）、[ADR-0012](decisions/0012-board-render-side-unit.md)
 
@@ -67,6 +67,7 @@
    - **2026-10-05 T3 实测（1.85 / 30 局 / 329 场面）：中位 23.53，≤30 占比满足 ≥80%（p80≈27.8）— 按 ADR-0014 通过**（见 `facts/strength-percentile-p3t3.md`）。旧门槛 ≤15 / ≤20 未过，已废止。
 2. 新增 1 局的增量计算 ≤10 分钟（本机墙钟）；一个版本的回填 ≤2 小时；
 3. P3-T4：局均分位与名次、下一回合血量显著相关；相对 HDT 的增量信息在**名次**标签上比较，不比本场战果。
+   - **2026-10-05：** 可复跑评估已交付；当前 1.85 配对局 **n=7** → **样本不足无法判定**；局均血量 n=30 亦不显著。攒配对局后重跑同一命令。
 
 ---
 

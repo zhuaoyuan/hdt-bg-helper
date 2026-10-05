@@ -30,3 +30,4 @@
 | [P3-T1-strength-engine](P3-T1-strength-engine.md) | P3-T1 战力分位引擎：参照池与放宽、抽样、缓存、置信区间（含 P3-T2/T3 边界） | approved |
 | [P3-board-render](P3-board-render.md) | P3-T6 局面阵容图离线渲染（单侧单元；ADR-0012） | implemented |
 | [P3-T5-review-view](P3-T5-review-view.md) | P3-T5 赛后复盘视图原型（静态 HTML；ADR-0013） | implemented（验收 5 待所有者） |
+| [P3-T4-validity](P3-T4-validity.md) | P3-T4 战力分位有效性评估（名次 / 下回合血量 / 相对 HDT） | implemented |
