@@ -40,6 +40,7 @@
 | [`replay-roundtrip.md`](replay-roundtrip.md) | `_input`→独立进程重放往返 261/261；Q-009 耗时、Q-011 跨版本、Q-013 未赋值扰动（P2-T0，2026-10-05） |
 | [`standard-layer-import.md`](standard-layer-import.md) | P2-T3 标准层导入：每回合表、ready/团子对照/重放 3σ 本机结果（2026-10-05） |
 | [`strength-cross-p3t0.md`](strength-cross-p3t0.md) | P3-T0 全交叉：S/分位成本、bootstrap、战果相关、相对 HDT、基准集、对手场面（2026-10-05） |
+| [`hdt-past-opponent-board-render.md`](hdt-past-opponent-board-render.md) | HDT 上次对手阵容叠加层实现；诊断 dump 是否足以离线渲染阵容图（2026-10-05） |
 | [`bobsbuddy-minion-enchantments.md`](bobsbuddy-minion-enchantments.md) | 随从附着附魔 → BB `Minion` 字段映射全表（上一份的附表） |
 | [`local-environment.md`](local-environment.md) | 所有者本机实际运行的 HDT 版本、数据目录、可用工具 |
 | [`bobsbuddy-public-api.md`](bobsbuddy-public-api.md) | `BobsBuddy.dll` 公开 API、独立调用实测、版本差异 |
