@@ -12,6 +12,7 @@
 | --- | --- | --- | --- | --- | --- |
 | Q-002 | 能否通过反射读取 HDT 内部 `BobsBuddyInvoker._input`，作为对照基准或数据源？稳定性如何？ | 中 | **已跨 4 个 HDT / BB 小版本继续成功**（2026-10-04 批：HDT 1.58.3→1.58.6，BB 1.78.1→1.85.0，537/539 场完整 Input+Output，`probeInitError` 全空）。P2-T1 已采纳为**主数据源**（ADR-0010）；残留 invoker、匿名化误伤见 `facts/diag-capture-batch-20261003.md`。字段级改名：1.85.0 新增 `DiscardCounter`。仍 investigating：大版本/反射成员改名时再测（升级冒烟：`check_capture` + roundtrip） | ADR-0010、`spikes/hdt-diag-logger/` | investigating |
 | Q-008 | 个人对局数据量能否支撑按"同补丁 + 同回合 + 同规则"筛选的参照池？需要多少局？ | 高 | 估算见 `research/q008-personal-data-volume.md`。**P3-T0 实测（2026-10-05）**：同 BB 1.85 + 同回合、约 23 局己方场面时，分位 bootstrap 宽中位 ≈14 百分位点（84%≤20）；加对手场面更稳。严格再按种族/畸变分桶仍不可行。P3-T1：默认同版本+同回合，不足时先加对手场面再 turn±1 | P3、`facts/strength-cross-p3t0.md` | investigating |
+| Q-015 | 场面对场面交叉时，目标蒙特卡洛迭代次数可降到多少，仍保留对 \(S(x)\)/分位/胜负排序有用的质量，并最大限度省时？ | 中 | 以 P3-T0 的 4000 次（及 `maxDuration`）为基线，在同一批交叉对上扫迭代档位（如 500/1000/2000/4000），对照：五率相对基线的误差、\(S\)/分位秩相关与绝对偏差、bootstrap 宽、墙钟。作为 P3-T1「抽样与加权」的候选路径之一（与参照场面抽样并列），结论写入设计方案默认值 | P3-T1、`facts/strength-cross-p3t0.md` | open |
 
 ## 已关闭
 
