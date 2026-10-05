@@ -30,4 +30,4 @@
 ## 所有者待办
 
 - ~~挑 ≥3 张单侧图对照团子阵容或 HDT 悬停~~ → **2026-10-05 所有者确认没问题**；roadmap 已打勾。
-- 可选：合并 `feat/P3-T6-board-render` → `main`。
+- ~~合并 `feat/P3-T6-board-render` → `main`~~ → **已快进合并**（未 push）。

@@ -7,7 +7,7 @@
 
 ## 最近完成
 
-- **P3-T6 局面阵容图离线渲染**（2026-10-05）：验收 1–5 全部通过（所有者确认样本图没问题）。`tools/board_render/`；分支 `feat/P3-T6-board-render` **尚未合并 main**。见 [`worklog/2026-10-05-p3t6-board-render.md`](worklog/2026-10-05-p3t6-board-render.md)、[`design/P3-board-render.md`](design/P3-board-render.md)。
+- **P3-T6 局面阵容图离线渲染**（2026-10-05）：验收 1–5 全部通过（所有者确认样本图没问题）。`tools/board_render/`；已快进合并入 `main`（`feat/P3-T6-board-render`）。见 [`worklog/2026-10-05-p3t6-board-render.md`](worklog/2026-10-05-p3t6-board-render.md)、[`design/P3-board-render.md`](design/P3-board-render.md)。
 - **P3-T1 方案批准**（2026-10-05）：ADR-0011 + `design/P3-T1-strength-engine.md` → approved。
 - **局面阵容图渲染可行性调研**（2026-10-05）：见 [`facts/hdt-past-opponent-board-render.md`](facts/hdt-past-opponent-board-render.md)。
 - **P3-T0 / P2 提前退出 / 插件 0.2.0**（2026-10-05）：见既有 worklog。
@@ -18,9 +18,8 @@
 
 ## 下一步（按优先级）
 
-1. **所有者（可选）：** 合并 `feat/P3-T6-board-render` → `main`（或授权 agent 合并）。
-2. **agent：P3-T1 校准实验 E1–E3（E5 可选）** — 填 §3.9 后进 P3-T2。
-3. **所有者（可选）：** 继续团子版 + 0.2.0 采集；`git push` 发布 `main`。
+1. **agent：P3-T1 校准实验 E1–E3（E5 可选）** — 填 §3.9 后进 P3-T2。
+2. **所有者（可选）：** 继续团子版 + 0.2.0 采集；`git push` 发布 `main`（本地 ahead 11）。
 
 ## 待决事项默认值（所有者未否决即按此执行）
 
@@ -39,4 +38,4 @@
 
 ## 阻塞 / 需要所有者决定
 
-- 无（P3-T6 合并 main 为可选操作，不阻塞 P3-T1）。
+- 无。
