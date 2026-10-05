@@ -56,7 +56,7 @@
 
 - [x] P3-T0 **核心假设早期验证**（依赖 P2-T0、P2-T3）：BB 1.85.0 同回合全交叉（`player_vs_player` + `player_vs_both`）。结论：成本远低于 Q-009；bootstrap 中位宽 ≈12–14 百分位点；分位对当场战果有中等区分，但对「本场对阵」相对 HDT 无增量；固定基准集弱于全池；对手场面进池未见明显毒化。**不推翻 ADR-0003**。见 `facts/strength-cross-p3t0.md`、`spikes/strength-cross/`（2026-10-05）
 - [x] P3-T1 设计方案 + 校准：参照池/放宽/抽样/缓存/置信区间。方案 `design/P3-T1-strength-engine.md`（**approved**）+ [ADR-0011](decisions/0011-strength-pool-round-robin.md)（**accepted**）。校准 E1–E5：`facts/strength-calibration.md`（2026-10-05：iterations=500，K=30，\(G_\text{min}=6\)，\(w_\text{relax}=0.25\)+L1，L2 关；Q-015/Q-016 关闭）
-- [ ] P3-T2 批量模拟服务（状态哈希去重、结果缓存、模拟器版本标记）
+- [x] P3-T2 批量模拟服务（状态哈希去重、结果缓存、模拟器版本标记）：`tools/ReplaySim` + `tools/strength`；验收见 `facts/strength-batch-p3t2.md`（2026-10-05）
 - [ ] P3-T3 分位计算与不确定度输出
 - [ ] P3-T4 指标有效性评估（区分度、稳定性、与名次/后续血量的关系；相对 HDT 的增量在名次标签上比）
 - [ ] P3-T5 复盘视图原型（按回合展示分位、置信度、实际对手和结果）

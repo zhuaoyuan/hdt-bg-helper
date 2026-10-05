@@ -225,6 +225,6 @@ flowchart LR
 
 1. ~~本方案 + ADR-0011~~ — 已 approved / accepted（2026-10-05）。
 2. ~~**校准实验 E1–E3（E5 可选）**~~ — 2026-10-05 完成：`spikes/strength-cross/tools/calibrate.py`；`facts/strength-calibration.md`；§3.9 已填。
-3. **P3-T2**：`tools/ReplaySim` 迁移；`tools/strength/` 的入池、面板、缓存、增量批跑，附单元测试。
+3. ~~**P3-T2**~~ — 2026-10-05 完成：`tools/ReplaySim`；`tools/strength/` 入池/面板/缓存/增量；见 `facts/strength-batch-p3t2.md`。
 4. **P3-T3**：循环赛 \(S/Q\)、聚类 bootstrap、放宽阶梯与标签、`strength.jsonl`、退出统计脚本。
 5. P3-T4 / P3-T5 不变。
