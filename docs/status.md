@@ -7,6 +7,7 @@
 
 ## 最近完成
 
+- **10.5 拔线场次 diag 完整性**（2026-10-05）：团子当日对照 BgHelperDiag。无拔线局 `6ab052` 10/10；`c88ca9` 10/11；最新德雷阿佳丝局 `20ad61` **11/12**（仅 T10「直接拔线」缺 Combat；T6–T9/T11「不知结果」阵容+BB 仍在）。泽瑞拉局仅中途启用残局 `bdd811`。见 [`facts/diag-disconnect-completeness-20261005.md`](facts/diag-disconnect-completeness-20261005.md)、[`worklog/2026-10-05-disconnect-diag-completeness.md`](worklog/2026-10-05-disconnect-diag-completeness.md)。
 - **HDT 无响应排查搁置**（2026-10-05）：重启电脑后，无论是否启用 `HdtDiagLogger` 均未再出现未响应。前一日证据指向 HearthMirror Cross-thread Hang、很大概率非本插件；现无法稳定复现，**排查暂停**。若再出现再开。见 [`worklog/2026-10-04-hdt-hang-triage.md`](worklog/2026-10-04-hdt-hang-triage.md)。
 - **采集策略确认**（2026-10-04）：所有者后续以**团子版**采集 + 团子对战记录对照；已写 [ADR-0008](decisions/0008-tuanzi-capture-with-record-crosscheck.md)，并更新 [`process/field-capture.md`](process/field-capture.md)。
 - **团子版 diag 兼容性**（2026-10-04）：`20261004_200638_13406d`（团子 HDT 1.58.6.0 / BB 1.85.0）与官方样本 Input/Output schema 一致；与 `data/tuanzi/2026年10月04日.txt` 阵容+模拟五率 10/10 对齐。见 [`facts/diag-tuanzi-compat-20261004.md`](facts/diag-tuanzi-compat-20261004.md)。
