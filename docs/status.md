@@ -7,9 +7,10 @@
 
 ## 最近完成
 
-- **P3-T0 核心假设早期验证**（2026-10-05）：BB 1.85.0 同回合交叉；冒烟 30/30；pvp 5090 / pvb 10552 对全 ok。成本 ≪10 分钟/局；bootstrap 中位宽 ≈12–14 百分位点；分位对当场战果有中等区分，对本场对阵相对 HDT **无增量**；固定基准集弱于全池；对手场面可进池。不推翻 ADR-0003。见 [`facts/strength-cross-p3t0.md`](facts/strength-cross-p3t0.md)、[`worklog/2026-10-05-p3t0-strength-cross.md`](worklog/2026-10-05-p3t0-strength-cross.md)。分支 `feat/P3-T0-core-hypothesis`。
+- **P3-T0 核心假设早期验证**（2026-10-05）：BB 1.85.0 同回合交叉；冒烟 30/30；pvp 5090 / pvb 10552 对全 ok。成本 ≪10 分钟/局；bootstrap 中位宽 ≈12–14 百分位点；分位对当场战果有中等区分，对本场对阵相对 HDT **无增量**；固定基准集弱于全池；对手场面可进池。不推翻 ADR-0003。见 [`facts/strength-cross-p3t0.md`](facts/strength-cross-p3t0.md)、[`worklog/2026-10-05-p3t0-strength-cross.md`](worklog/2026-10-05-p3t0-strength-cross.md)。
 - **P2 提前退出**（2026-10-05）：配对 7 局 ready 95.1%、对照/重放 78/78。见 [`worklog/2026-10-05-p2-early-exit.md`](worklog/2026-10-05-p2-early-exit.md)。
 - **插件 0.2.0 / P2-T3–T0**（2026-10-05）：诊断转正、标准层、往返验证。
+- **分支合并入 `main`**（2026-10-05）：快进合并 `feat/P2-T2` → `feat/P2-T3` → `feat/P3-T0`（`99e2cc7..5ba9d2d`，共 5 个提交）。本地 `main` 相对 `origin/main` ahead 6；未 push。
 
 ## 进行中
 
@@ -18,7 +19,7 @@
 ## 下一步（按优先级）
 
 1. **agent：P3-T1 设计方案** — 参照池选择与放宽（同版本+同回合；不足时对手场面 → turn±1）、抽样与加权、缓存、置信区间；吸收 `facts/strength-cross-p3t0.md` §8 约束。
-2. **所有者（可选）：** 继续团子版 + 0.2.0 采集（名次标签供 P3-T4）；合并/验收 P2 与 P3-T0 分支。
+2. **所有者（可选）：** 继续团子版 + 0.2.0 采集（名次标签供 P3-T4）；`git push` 发布 `main`。
 
 ## 待决事项默认值（所有者未否决即按此执行）
 
