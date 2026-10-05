@@ -30,9 +30,10 @@
 | [ADR-0001](0001-agent-driven-docs-structure.md) | 采用分类文档体系支撑 agent 驱动开发 | accepted |
 | [ADR-0002](0002-bobsbuddy-as-primary-simulator.md) | 以 Bob's Buddy 作为首选战斗模拟器 | accepted |
 | [ADR-0003](0003-strength-metric-definition.md) | 以"本回合战力分位"作为核心战力指标 | accepted |
-| [ADR-0004](0004-capture-light-compute-async.md) | 插件采集保持轻量，原始数据只追加，计算异步化 | proposed |
+| [ADR-0004](0004-capture-light-compute-async.md) | 插件采集保持轻量，原始数据只追加，计算异步化 | accepted |
 | [ADR-0005](0005-modded-hdt-as-test-environment.md) | 以本机安装的修改版 HDT 作为实测与验证环境 | superseded by ADR-0007 |
 | [ADR-0006](0006-personal-plugin-use-of-hdt-bobsbuddy.md) | 个人非商业插件可调用本机 HDT / Bob's Buddy 公开 API | accepted |
 | [ADR-0007](0007-official-hdt-as-test-environment.md) | 以本机官方版 HDT（保持最新）作为实测与验证环境 | accepted（采集环境见 ADR-0008） |
 | [ADR-0008](0008-tuanzi-capture-with-record-crosscheck.md) | 个人采集以团子版 HDT + 对战记录对照为主 | accepted（第 4 条被 ADR-0009 取代） |
 | [ADR-0009](0009-allow-disconnect-reconstruct-results.md) | 采集期允许拔线，拔线回合的战果由上下文还原 | accepted |
+| [ADR-0010](0010-hdt-input-dump-as-primary-source.md) | 以 HDT `_input` 反射转储为主数据源，实体快照为后备 | accepted |

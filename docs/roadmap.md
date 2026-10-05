@@ -40,7 +40,7 @@
 **范围（2026-10-05 所有者确认重估，见 [`worklog/2026-10-05-p2-rescope.md`](worklog/2026-10-05-p2-rescope.md)）：** 诊断插件 `HdtDiagLogger` 转正为采集工具，不另写新插件；它的记录目录就是原始层。团子对战记录（ADR-0008）承担"阵容 / 当场五率"的独立校验，并提供实际战果与名次。原 T2–T7 已合并为下面 4 项。
 
 - [x] P2-T0 **离线重放与往返验证**（合并原 T0、T5）：把诊断记录里 HDT `_input` 的反射转储按字段还原成 BB `Input`，按 `meta` 的 BB 版本在独立进程里模拟，与记录的 `Output` 对照。附带 Q-009（耗时）、Q-011（跨 BB 版本）、Q-013（未赋值字段）实验。P3-T0 的前置。结论见 `facts/replay-roundtrip.md`、`spikes/replay-harness/`（2026-10-05）
-- [ ] P2-T1 **短方案 + ADR**（`design/P2-data-capture.md`）：诊断记录目录即原始层，标准层由离线导入生成；以 HDT `_input` 为主数据源、实体快照只作后备（写 ADR，同时细化 ADR-0004）；压缩与保留策略（约 10–19 MB/局）。不再单独设计三层存储与 schema 演进体系
+- [x] P2-T1 **短方案 + ADR**（`design/P2-data-capture.md`）：诊断记录目录即原始层，标准层由离线导入生成；以 HDT `_input` 为主数据源、实体快照只作后备（[ADR-0010](decisions/0010-hdt-input-dump-as-primary-source.md)，并接受细化后的 [ADR-0004](decisions/0004-capture-light-compute-async.md)）；压缩与保留策略。不再单独设计三层存储与 schema 演进体系（2026-10-05）
 - [ ] P2-T2 **诊断插件转正**（替代原插件骨架、原始层采集）：只做必要补丁——匿名化加词边界，不再误改 `Player` / `$type`；`records.jsonl` 局末压缩。过滤残留 invoker、选取 `2022=0` 之后的记录放在离线导入里做；`2717` 补录、`hearthstoneBuild` 修正为可选项
 - [ ] P2-T3 **离线导入与质量报告**（吸收原标准层投影、质量报告、复盘报告 v0）：诊断记录 + 团子文本批量配对 → 每回合一行（回合、对手英雄、Input 引用、Output、实际胜负与伤害、名次、完整性状态 `ready` / `partial` / `unsupported` / `invalid`）。拔线回合尽量用上下文还原战果，并标注来源（ADR-0009、Q-014）。报告包括：各状态占比、团子对照通过率、重放偏差、P1 清单缺口的正例出现情况、HDT 升级后的冒烟检查。这张表也是 P3-T0 的输入和"HDT 当场胜率"基线
 

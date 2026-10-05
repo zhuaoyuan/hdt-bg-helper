@@ -3,10 +3,11 @@
 > 这份文档回答：项目现在在哪一步、下一步做什么、有什么阻塞。每次会话结束时由 agent 更新。
 
 **最后更新：** 2026-10-05
-**当前阶段：** P2 — 个人局内数据收集工具（P1 已完成；P2-T0 已完成）
+**当前阶段：** P2 — 个人局内数据收集工具（P1 已完成；P2-T0 / P2-T1 已完成）
 
 ## 最近完成
 
+- **P2-T1 短方案 + ADR**（2026-10-05）：[`design/P2-data-capture.md`](design/P2-data-capture.md) approved；[ADR-0004](decisions/0004-capture-light-compute-async.md) 细化后 accepted；新 [ADR-0010](decisions/0010-hdt-input-dump-as-primary-source.md)（`_input` 为主、实体为后备）accepted；[`architecture/overview.md`](architecture/overview.md) 已同步。见 [`worklog/2026-10-05-p2t1-data-capture.md`](worklog/2026-10-05-p2t1-data-capture.md)。
 - **P2-T0 离线重放与往返验证**（2026-10-05）：`spikes/replay-harness` 将 `_input` 转储按 `meta` BB 版本独立进程模拟。本机 1.78.1+1.85.0 共 **261/261** 场五率往返通过；关闭 Q-009 / Q-011 / Q-013。见 [`facts/replay-roundtrip.md`](facts/replay-roundtrip.md)、[`design/P2-replay-harness.md`](design/P2-replay-harness.md)、[`worklog/2026-10-05-p2t0-replay-harness.md`](worklog/2026-10-05-p2t0-replay-harness.md)。
 - **Q-014 关闭：拔线回合战果可还原**（2026-10-05）：HDT invoker 转储的 `LastAttackingHero` + 排行榜英雄有效血量差（重连回合取 `FULL_ENTITY` 重发后）。团子有战果 47 回合 47/47；拔线 9 回合全部还原，与 BB 高置信预测 7/7 一致。仅"幽灵对手 + 拔线"只能判非负。见 [`facts/combat-result-reconstruction.md`](facts/combat-result-reconstruction.md)、[`worklog/2026-10-05-q014-result-reconstruction.md`](worklog/2026-10-05-q014-result-reconstruction.md)。
 - **P2 范围重估**（2026-10-05，所有者确认）：P2 由 8 项压到 4 项——T0 重放+往返验证；T1 短方案+ADR；T2 诊断插件转正；T3 离线导入与质量报告（含团子配对、拔线战果还原）。roadmap 已改。另：所有者会继续拔线 → [ADR-0009](decisions/0009-allow-disconnect-reconstruct-results.md)（取代 ADR-0008 第 4 条），还原方法待验证（Q-014）。见 [`worklog/2026-10-05-p2-rescope.md`](worklog/2026-10-05-p2-rescope.md)。
@@ -28,11 +29,10 @@
 
 ## 下一步（按优先级）
 
-1. **agent：P2-T3 离线导入（可与 T2 并行）。** 产出每回合一行的表。团子配对可直接复用 `eval_q014_reconstruct.py` 的方法（日期 + invoker 中文英雄名 + 每回合对手名，5/5 局对上）；战果按 `facts/combat-result-reconstruction.md` 第 4 节的顺序取并标注来源（`tuanzi` / `hdt` / `lb` / `unknown`）；重放偏差列可调用 `spikes/replay-harness`。
+1. **agent：P2-T3 离线导入（可与 T2 并行）。** 按 [`design/P2-data-capture.md`](design/P2-data-capture.md) 产出每回合一行的表。团子配对可直接复用 `eval_q014_reconstruct.py` 的方法（日期 + invoker 中文英雄名 + 每回合对手名，5/5 局对上）；战果按 `facts/combat-result-reconstruction.md` 第 4 节的顺序取并标注来源（`tuanzi` / `hdt` / `lb` / `unknown`）；重放偏差列可调用 `spikes/replay-harness`。
 2. **agent：P2-T2 插件补丁**：匿名化加词边界，避免再腐蚀 `Player` / `ControlledByPlayer` / `Windfury` / `$type`；`records.jsonl` 局末压缩。过滤残留 invoker、选取 `2022=0` 之后的记录放在离线导入里做；`2717` 补录、`hearthstoneBuild` 修正为可选项。
-3. **agent：P2-T1 短方案 + ADR**：诊断记录目录即原始层；"HDT `_input` 为主数据源"的 ADR；细化 ADR-0004 后请所有者确认。
-4. **agent：P3-T0 核心假设早期验证**（依赖 P2-T0✓、P2-T3）：建议先用 BB 1.85.0 队列做全交叉模拟，再扩到全量；重放工具已就绪。
-5. **所有者：** 按 [`process/field-capture.md`](process/field-capture.md) 用**团子版**继续采集（可以拔线）；每批带回 `BgHelperDiag/<id>` + 当日 `对战记录` 文本到 `data/tuanzi/`。若要重放 1.80.1/1.81.2 局，需补对应 `BobsBuddy.dll`。
+3. **agent：P3-T0 核心假设早期验证**（依赖 P2-T0✓、P2-T3）：建议先用 BB 1.85.0 队列做全交叉模拟，再扩到全量；重放工具已就绪。
+4. **所有者：** 按 [`process/field-capture.md`](process/field-capture.md) 用**团子版**继续采集（可以拔线）；每批带回 `BgHelperDiag/<id>` + 当日 `对战记录` 文本到 `data/tuanzi/`。若要重放 1.80.1/1.81.2 局，需补对应 `BobsBuddy.dll`。
 
 ## 待决事项默认值（所有者未否决即按此执行）
 
@@ -42,7 +42,7 @@
 | Q-009 耗时标准 | **已关闭**：赛后后台每局全部回合 ≤ 10 分钟；实测每局模拟合计 ≪ 该预算。局内实时预算留到 P4-T1 |
 | Q-005 CI 与托管 | 暂不做 CI，只在本机构建；托管等需要时再定 |
 | 个人采集环境 | **团子版 + 对战记录对照**（ADR-0008）。插件语义仍以官方为准；允许拔线，战果由上下文还原（ADR-0009） |
-| ADR-0004 | 维持 `proposed`，P2-T1 细化后再请所有者确认 |
+| ADR-0004 / ADR-0010 | **已接受**（P2-T1，2026-10-05） |
 
 ## 阻塞 / 需要所有者决定
 
