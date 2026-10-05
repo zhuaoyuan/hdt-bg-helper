@@ -23,8 +23,9 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 HARNESS = HERE.parent
-DEFAULT_BB_MAP = HARNESS / "bb-dirs.json"
-DEFAULT_EXE = HARNESS / "ReplaySim" / "bin" / "run" / "ReplaySim.exe"
+REPO = HARNESS.parents[1]
+DEFAULT_BB_MAP = REPO / "tools" / "ReplaySim" / "bb-dirs.json"
+DEFAULT_EXE = REPO / "tools" / "ReplaySim" / "bin" / "run" / "ReplaySim.exe"
 sys.path.insert(0, str(HARNESS.parent / "hdt-diag-logger" / "tools"))
 from diag_io import open_text, records_path  # noqa: E402
 

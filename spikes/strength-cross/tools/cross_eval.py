@@ -29,8 +29,8 @@ sys.path.insert(0, str(HERE))
 from cross_input import make_cross_input, score_of  # noqa: E402
 from standard_layer.combat import discover_games, iter_game_combats, load_meta  # noqa: E402
 
-DEFAULT_EXE = REPO / "spikes" / "replay-harness" / "ReplaySim" / "bin" / "run" / "ReplaySim.exe"
-DEFAULT_BB_MAP = REPO / "spikes" / "replay-harness" / "bb-dirs.json"
+DEFAULT_EXE = REPO / "tools" / "ReplaySim" / "bin" / "run" / "ReplaySim.exe"
+DEFAULT_BB_MAP = REPO / "tools" / "ReplaySim" / "bb-dirs.json"
 DEFAULT_TURNS = REPO / "data" / "standard" / "turns.jsonl"
 
 

@@ -15,14 +15,14 @@
 | `tools/calibrate.py` | P3-T1：E1 迭代 / E2 面板 K / E3 \(G_\text{min}\) 与 L1 / E5 跨版本 |
 | `out/`、`out_both/`、`out_calibrate/` | 本地结果（gitignore） |
 
-依赖已有 `spikes/replay-harness/ReplaySim` 的 `--batch` 模式。
+依赖 [`tools/ReplaySim`](../../tools/ReplaySim/) 的 `--batch` 模式（P3-T2 已从 spike 迁出）。
 
 ## 复现
 
 ```powershell
 $dn = "C:\Program Files\dotnet\dotnet.exe"
 $hdt = "$env:LOCALAPPDATA\HearthstoneDeckTracker\app-1.58.6"
-& $dn build spikes\replay-harness\ReplaySim -c Release -p:HdtDir=$hdt -o spikes\replay-harness\ReplaySim\bin\run
+& $dn build tools\ReplaySim -c Release -p:HdtDir=$hdt -o tools\ReplaySim\bin\run
 
 # 可选：刷新标准层标签（含 APPDATA 新局）
 python -m tools.standard_layer --out data\standard
