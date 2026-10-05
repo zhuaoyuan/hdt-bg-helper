@@ -323,6 +323,8 @@ def analyze_combat(segment: dict, combat_idx: int) -> dict:
         "playerMinions": p_board,
         "oppMinions": o_board,
         "entities": entities,
+        # context.<side>.board ids for entities@combat_start (P3-T6 board_render).
+        "context": ctx,
         "hasStartSnap": bool(ctx_info),
         "hasOutput": out is not None,
         "hasInput": inp is not None,
