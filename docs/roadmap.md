@@ -60,7 +60,7 @@
 - [ ] P3-T3 分位计算与不确定度输出
 - [ ] P3-T4 指标有效性评估（区分度、稳定性、与名次/后续血量的关系；相对 HDT 的增量在名次标签上比）
 - [ ] P3-T5 复盘视图原型（按回合展示分位、置信度、实际对手和结果）
-- [ ] P3-T6 **局面阵容图离线渲染**（P3-T5 的组件，可单独交付）：无状态单侧随从横排 PNG（`render_side`）；本机可读 HDT 贴图作皮肤；v1 只画随从。方案 `design/P3-board-render.md`（approved）、[ADR-0012](decisions/0012-board-render-side-unit.md)
+- [~] P3-T6 **局面阵容图离线渲染**（P3-T5 的组件，可单独交付）：代码已交付（`tools/board_render/`，`feat/P3-T6-board-render`）；验收 1–4 通过；**待所有者人工核对 ≥3 张**后打勾。方案 `design/P3-board-render.md`（implemented）、[ADR-0012](decisions/0012-board-render-side-unit.md)
 
 **退出标准（2026-10-05 所有者确认）：**
 1. 当前主版本队列（≥20 局）中，回合 ≤12 的己方 `ready` 场面：聚类 bootstrap 95% 区间宽度**中位 ≤15**，且 **≥80%** 的场面 ≤20 个百分位点；

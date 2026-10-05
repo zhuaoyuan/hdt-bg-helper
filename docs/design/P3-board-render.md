@@ -1,6 +1,6 @@
 # 方案：局面阵容图离线渲染
 
-- **状态：** approved（所有者 2026-10-05 确认三点，见 [ADR-0012](../decisions/0012-board-render-side-unit.md)）
+- **状态：** implemented（代码 2026-10-05；验收 5 待所有者人工核对 ≥3 张图）
 - **任务：** P3-T6（新增；P3-T5 复盘视图的组件，可先于 T5 单独交付）
 - **作者 / 日期：** agent / 2026-10-05
 - **相关：** ADR-0012、`facts/hdt-past-opponent-board-render.md`、`facts/standard-layer-import.md`、`facts/licensing.md`、ADR-0006、ADR-0010
@@ -181,7 +181,15 @@ python -m tools.board_render --check --game ed11e0
 
 | 步骤 | 内容 | 单独验证 |
 | --- | --- | --- |
-| T6.1 | `board.py` + `test_board.py` + `--check` | 验收 1、2 |
-| T6.2 | `art.py` + `chrome.py` + `cards.py` | 缓存顺序、offline、无 chrome 回退 |
-| T6.3 | `render_side` + CLI（含可选 `--compose`） | 验收 3、4 |
-| T6.4 | 所有者人工核对；更新 status/roadmap | 验收 5 |
+| T6.1 ✅ | `board.py` + `test_board.py` + `--check` | 验收 1、2：12 unittest；ed11e0 `--check` 24/24 |
+| T6.2 ✅ | `art.py` + `chrome.py` + `cards.py` | 缓存顺序、offline、无 chrome 回退 |
+| T6.3 ✅ | `render_side` + CLI（含可选 `--compose`） | 验收 3、4：ed11e0 缺图 0；offline / drawn 均可出图 |
+| T6.4 ⏳ | 所有者人工核对；更新 status/roadmap | 验收 5（待所有者） |
+
+## 8. 实现记录
+
+- 分支：`feat/P3-T6-board-render`；包：`tools/board_render/`。
+- `analyze_combat` 增补 `context`（含 `<side>.board` id），供 entities 抽取；不改变原有字段语义。
+- HDT 安装包内 `Resources/Minion` 多为嵌入资源、无松散 PNG；探测顺序：`--chrome-dir` → Squirrel `app-*/Resources/Minion` → 本机源码检出 `…/Resources/Minion`（本机常命中）→ 自绘。**不入库、不分发。**
+- 风怒 / 潜行：HDT 控件无对应贴图，一律自绘字标。
+- 样本出图：`data/boards/20261005_104908_ed11e0/`（gitignore）；`summary.json` 记 `missingPortraitCount` / `chromeSource` / `cardsSource`。
