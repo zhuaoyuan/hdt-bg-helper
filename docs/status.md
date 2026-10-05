@@ -2,11 +2,12 @@
 
 > 这份文档回答：项目现在在哪一步、下一步做什么、有什么阻塞。每次会话结束时由 agent 更新。
 
-**最后更新：** 2026-10-04
+**最后更新：** 2026-10-05
 **当前阶段：** P2 — 个人局内数据收集工具（P1 已完成）
 
 ## 最近完成
 
+- **HDT 无响应排查搁置**（2026-10-05）：重启电脑后，无论是否启用 `HdtDiagLogger` 均未再出现未响应。前一日证据指向 HearthMirror Cross-thread Hang、很大概率非本插件；现无法稳定复现，**排查暂停**。若再出现再开。见 [`worklog/2026-10-04-hdt-hang-triage.md`](worklog/2026-10-04-hdt-hang-triage.md)。
 - **采集策略确认**（2026-10-04）：所有者后续以**团子版**采集 + 团子对战记录对照；已写 [ADR-0008](decisions/0008-tuanzi-capture-with-record-crosscheck.md)，并更新 [`process/field-capture.md`](process/field-capture.md)。
 - **团子版 diag 兼容性**（2026-10-04）：`20261004_200638_13406d`（团子 HDT 1.58.6.0 / BB 1.85.0）与官方样本 Input/Output schema 一致；与 `data/tuanzi/2026年10月04日.txt` 阵容+模拟五率 10/10 对齐。见 [`facts/diag-tuanzi-compat-20261004.md`](facts/diag-tuanzi-compat-20261004.md)。
 - **BgHelperDiag 大批次评估**（2026-10-04）：所有者放入 `data/BgHelperDiag` 共 48 局（09-27~10-03），跨 HDT 1.58.3→1.58.6 / BB 1.78.1→1.85.0。537/539 场战斗完整；发现匿名化误伤 `Player` 键（10 局可修复）、`hearthstoneBuild` 不可信。见 [`facts/diag-capture-batch-20261003.md`](facts/diag-capture-batch-20261003.md)、[`worklog/2026-10-04-diag-dataset-eval.md`](worklog/2026-10-04-diag-dataset-eval.md)。
