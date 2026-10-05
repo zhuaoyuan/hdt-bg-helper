@@ -95,6 +95,8 @@ class TurnReview:
     level: str | None              # L0 / L1 / insufficient / …
     flags: list[str]               # wide, …
     strength_state: str            # ok | wide | relaxed | insufficient | missing | non_ready
+    my_tavern_tier: int | None     # 己方酒馆等级（开战 Input Player.Tier）
+    opp_tavern_tier: int | None    # 对手酒馆等级（开战 Input Opponent.Tier）
     board_player: str | None       # 相对 index.html 的 png 路径
     board_opponent: str | None
 
@@ -119,14 +121,18 @@ class GameReview:
 │ 时间线（横轴=回合）：分位点 + 95% 误差棒；下方色条=战果   │
 │ （hover / 点击选中回合）                                  │
 ├──────────────┬──────────────────────────────────────────┤
-│ 回合详情     │ 己方阵容 PNG                             │
-│ Q / CI / S   │ 对手阵容 PNG                             │
+│ 回合详情     │ 己方 酒馆 T{n} + 阵容 PNG                 │
+│ Q / CI / S   │ 对手 酒馆 T{n} + 阵容 PNG                 │
 │ level·flags  │                                          │
 │ 对手英雄     │                                          │
 │ 实际结果+伤  │                                          │
 │ HDT 五率     │                                          │
 └──────────────┴──────────────────────────────────────────┘
 ```
+
+双方酒馆等级与阵容图同区展示（各侧标题旁：`酒馆 Tn`）；缺数时写「酒馆 ?」，不臆造。
+
+**来源（实现时）：** 开战 BB `_input` 的 `Player.Tier` / `Opponent.Tier`（= 英雄 `PLAYER_TECH_LEVEL`，见 `facts/bobsbuddy-simulator-input.md`）。标准层行若尚未透出该字段，由 `join`/`boards` 从该回合 `inputRef` 指向的 Input 读取；entities 仅作后备。
 
 展示规则：
 
@@ -202,7 +208,7 @@ data/review/<gameId>/
 | 1 | 单元测试 | `python -m unittest discover -s tools\review_view -p "test_*.py" -v` | join：对齐键、缺 strength、non_ready、wide/L1 文案；fixture HTML 含关键字段 |
 | 2 | 单局冒烟 | 对 `ed11e0`（或当前配对局）生成 `index.html` | 文件存在；`model.json` 回合数 = 标准层该局战斗行数 |
 | 3 | 有 strength 时 | T3 产出后重跑同局 | 每个 `ready` 己方回合：有分位或显式 `insufficient`/`missing`；无「空着当 0」 |
-| 4 | 阵容 | 预渲或 CLI 内触发两侧图 | 点选 ≥3 个回合可见双方随从图（或明确缺图占位） |
+| 4 | 阵容 | 预渲或 CLI 内触发两侧图 | 点选 ≥3 个回合可见双方随从图（或明确缺图占位）；两侧标题旁有酒馆等级（或「?」） |
 | 5 | 人工核对 | 所有者打开 1 局，对照团子/标准层 | 对手英雄、战果、伤害、名次一致；分位旁能看到 HDT 胜率；宽区间/放宽可辨 |
 
 P3 总退出标准不由 T5 单独承担；T5 只证明「人能用这些数复盘」。

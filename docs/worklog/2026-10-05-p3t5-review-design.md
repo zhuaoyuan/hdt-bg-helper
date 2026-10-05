@@ -5,6 +5,7 @@
 - 写了 [`design/P3-T5-review-view.md`](../design/P3-T5-review-view.md)；新增 [ADR-0013](../decisions/0013-offline-static-review-html.md)。
 - 所有者确认三点后：方案 → `approved`，ADR-0013 → `accepted`；同步 architecture / design / decisions 索引与 `status.md`。
 - **本部分仅文档提交；不开始 `tools/review_view` 落地。**
+- 方案修订（同日稍后）：回合详情双方阵容区增加**己方/对手酒馆等级**（`Player.Tier` / `Opponent.Tier`）。
 
 ## 所有者决定（2026-10-05）
 
