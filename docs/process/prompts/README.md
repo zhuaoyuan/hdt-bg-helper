@@ -30,6 +30,7 @@ agent 读到提示词后按其中的步骤执行。每份提示词都默认 agen
 | [`session-handoff.md`](session-handoff.md) | 会话收尾交接 |
 | [`p3-t2-batch-sim.md`](p3-t2-batch-sim.md) | **P3-T2** 专用：ReplaySim 迁移、入池/面板/缓存/增量批跑 |
 | [`p3-t3-percentile.md`](p3-t3-percentile.md) | **P3-T3** 专用：循环赛分位、聚类 bootstrap、放宽阶梯、退出统计 |
+| [`p3-t4-validity.md`](p3-t4-validity.md) | **P3-T4** 专用：分位↔名次/血量有效性、相对 HDT 增量（名次标签） |
 
 相关操作说明（不是提示词）：[`field-capture.md`](../field-capture.md) — 在没有开发环境的电脑上继续打酒馆并带回诊断记录。
 

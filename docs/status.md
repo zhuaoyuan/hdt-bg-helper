@@ -18,7 +18,7 @@
 ## 下一步（按优先级）
 
 1. **所有者：** 打开复盘页做人核（T5 验收 5）；按需 `git push`。
-2. **agent：P3-T4** — 分位与名次/承伤有效性。
+2. **agent：P3-T4** — 按 [`process/prompts/p3-t4-validity.md`](process/prompts/p3-t4-validity.md)（短方案 + 可复跑有效性评估）。
 3. **所有者（可选）：** 继续采集；把新局拷入 `data/BgHelperDiag`。
 
 ## 待决事项默认值（所有者未否决即按此执行）
