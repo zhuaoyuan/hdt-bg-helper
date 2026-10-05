@@ -39,3 +39,4 @@
 | [ADR-0010](0010-hdt-input-dump-as-primary-source.md) | 以 HDT `_input` 反射转储为主数据源，实体快照为后备 | accepted |
 | [ADR-0011](0011-strength-pool-round-robin.md) | 战力分位采用"同版本同回合、留一局循环赛 + 确定性参照面板" | accepted |
 | [ADR-0012](0012-board-render-side-unit.md) | 阵容图以无状态单侧渲染为单元，允许本机 HDT 贴图 | accepted |
+| [ADR-0013](0013-offline-static-review-html.md) | 赛后复盘原型以离线静态 HTML 交付 | accepted |
