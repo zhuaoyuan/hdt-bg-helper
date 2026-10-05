@@ -239,3 +239,4 @@ P3 总退出标准不由 T5 单独承担；T5 只证明「人能用这些数复�
 - 样本：`data/review/20261005_104908_ed11e0/`（gitignore）；12 回合全部 `ready` 均有分位或 `wide`；T5 己方酒馆 4 / 对手 3。
 - 阵容图默认从 `--boards` **复制**进 `data/review/<gameId>/boards/`，便于 `file://` 打开。
 - P3 退出标准第 1 条未达标不影响本视图消费 `strength.jsonl`。
+- **2026-10-05 增强：** 对手分位（`strength_opp.jsonl` 按需算）、时间线双序列 + 升本标记、界面样式刷新。

@@ -15,4 +15,5 @@ python -m tools.review_view --game ed11e0 `
 start data\review\20261005_104908_ed11e0\index.html
 ```
 
-输出：`data/review/<gameId>/index.html` + `model.json` + `boards/`（从 `--boards` 复制）。可选 `--render-boards`、`--serve`、`--allow-missing-strength`。
+输出：`data/review/<gameId>/index.html` + `model.json` + `boards/`（从 `--boards` 复制）。  
+默认会按需计算对手分位并缓存到 `data/strength/<bb>/strength_opp.jsonl`。可选 `--no-opp-strength`、`--render-boards`、`--serve`、`--allow-missing-strength`。

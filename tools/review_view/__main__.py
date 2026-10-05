@@ -16,14 +16,16 @@ from .boards import (
     render_boards_if_needed,
     tiers_from_combats,
 )
-from .page import write_review
 from .join import (
     build_game_review,
     filter_turns,
+    index_opponent_strength,
     index_player_strength,
     load_jsonl,
     load_notes,
 )
+from .opp_strength import ensure_opponent_strength, load_opp_cache, opp_cache_path
+from .page import write_review
 
 
 def _resolve_game_ids(turns: list[dict], game: str | None, all_games: bool) -> list[str]:
@@ -50,12 +52,15 @@ def build_one(
     render_boards: bool,
     allow_missing_strength: bool,
     offline_boards: bool,
+    compute_opp: bool,
+    turns_path: Path,
 ) -> Path:
     turn_rows = filter_turns(turns_all, game_id)
     if not turn_rows:
         raise SystemExit(f"no turns for {game_id}")
     canonical = str(turn_rows[0]["gameId"])
     strength_by = index_player_strength(strength_all, canonical)
+    opp_by = index_opponent_strength(strength_all, canonical)
 
     if not allow_missing_strength:
         missing_ready = [
@@ -70,15 +75,39 @@ def build_one(
                 + " (pass --allow-missing-strength to continue)"
             )
 
+    bb = (turn_rows[0].get("meta") or {}).get("bbVersion") or "1.85.0.0"
+    turns_list = [int(r["turn"]) for r in turn_rows]
+
+    # Merge Opponent rows from dedicated cache / on-demand compute
+    opp_path = opp_cache_path(str(bb))
+    cached_opp = load_opp_cache(opp_path)
+    for bid, row in cached_opp.items():
+        if str(row.get("side")) != "Opponent":
+            continue
+        if str(row.get("gameId")) != canonical and not str(row.get("gameId", "")).endswith(
+            canonical.split("_")[-1]
+        ):
+            continue
+        t = row.get("turn")
+        if t is not None and int(t) not in opp_by:
+            opp_by[int(t)] = row
+
+    if compute_opp:
+        filled = ensure_opponent_strength(
+            canonical,
+            bb_version=str(bb),
+            turns=turns_list,
+            turns_jsonl=turns_path,
+        )
+        opp_by.update(filled)
+
     tiers: dict[int, tuple[int | None, int | None]] = {}
-    game_dir = None
     try:
         _gid, game_dir = resolve_game(diag_roots(), canonical)
         tiers = tiers_from_combats(game_dir)
     except SystemExit:
         tiers = {}
 
-    turns_list = [int(r["turn"]) for r in turn_rows]
     combat_by = {int(r["turn"]): int(r["combat"]) for r in turn_rows if r.get("combat") is not None}
 
     if render_boards:
@@ -95,6 +124,7 @@ def build_one(
         game_id=canonical,
         turn_rows=turn_rows,
         strength_by_turn=strength_by,
+        opp_strength_by_turn=opp_by,
         tiers_by_turn=tiers,
         boards_by_turn=rel_boards,
         notes=notes,
@@ -121,6 +151,11 @@ def main(argv: list[str] | None = None) -> int:
     )
     ap.add_argument("--online-art", action="store_true", help="allow board_render to download art")
     ap.add_argument("--allow-missing-strength", action="store_true")
+    ap.add_argument(
+        "--no-opp-strength",
+        action="store_true",
+        help="skip Opponent percentile compute (timeline only shows player)",
+    )
     ap.add_argument("--serve", action="store_true", help="serve --out over localhost after build")
     ap.add_argument("--port", type=int, default=8765)
     args = ap.parse_args(argv)
@@ -150,12 +185,13 @@ def main(argv: list[str] | None = None) -> int:
             render_boards=args.render_boards,
             allow_missing_strength=args.allow_missing_strength,
             offline_boards=not args.online_art,
+            compute_opp=not args.no_opp_strength,
+            turns_path=turns_path,
         )
         written.append(path)
         print(path)
 
     if args.serve:
-        # Serve the out root so relative boards/ work.
         class Handler(SimpleHTTPRequestHandler):
             def __init__(self, *a, **k):
                 super().__init__(*a, directory=str(out_root), **k)

@@ -148,6 +148,17 @@ class JoinTests(unittest.TestCase):
             game_id="g1",
             turn_rows=self.turns,
             strength_by_turn=index_player_strength(self.strength, "g1"),
+            opp_strength_by_turn={
+                1: {
+                    "side": "Opponent",
+                    "S": 0.4,
+                    "percentile": 0.35,
+                    "ci95": [0.2, 0.5],
+                    "widthPts": 30,
+                    "level": "L0",
+                    "flags": ["wide"],
+                }
+            },
             tiers_by_turn={1: (2, 3), 2: (3, 3)},
             boards_by_turn={1: ("boards/T01_player.png", "boards/T01_opponent.png")},
         )
@@ -158,6 +169,11 @@ class JoinTests(unittest.TestCase):
         self.assertIn("区间偏宽", turn_detail_text(game.turns[1]))
         self.assertEqual(game.turns[0].my_tavern_tier, 2)
         self.assertEqual(game.turns[0].opp_tavern_tier, 3)
+        self.assertFalse(game.turns[0].my_tavern_up)
+        self.assertTrue(game.turns[1].my_tavern_up)  # 2 -> 3
+        self.assertFalse(game.turns[1].opp_tavern_up)  # 3 -> 3
+        self.assertEqual(game.turns[0].opp_percentile, 0.35)
+        self.assertEqual(game.turns[0].opp_strength_state, "wide")
         self.assertEqual(game.turns[2].strength_state, "non_ready")
 
     def test_missing_strength_row(self):
@@ -208,7 +224,15 @@ class HtmlTests(unittest.TestCase):
         self.assertIn("g1", html)
         self.assertIn("当场模拟", html)
         self.assertIn("my_tavern_tier", html)
+        self.assertIn("opp_percentile", html)
+        self.assertIn("my_tavern_up", html)
         self.assertIn("strength_state", html)
+        self.assertIn("己方升本", html)
+        self.assertIn("turnPrev", html)
+        self.assertIn("turnNext", html)
+        self.assertIn("togHp", html)
+        self.assertIn("5b9cf5", html)  # me color (not win-green)
+        self.assertIn("e879a9", html)  # opp color
         with tempfile.TemporaryDirectory() as td:
             path = write_review(game, Path(td))
             self.assertTrue(path.is_file())

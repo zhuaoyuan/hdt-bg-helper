@@ -125,19 +125,22 @@ class ChromeStore:
         return img
 
     def drawn_badge(self, text: str, *, fill: tuple[int, int, int, int]) -> Image.Image:
-        """Small pill used when keyword PNG is missing (e.g. windfury / stealth)."""
-        # Size is approximate; render.py may rescale.
-        w, h = 36, 18
-        img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-        draw = ImageDraw.Draw(img)
-        draw.rounded_rectangle([0, 0, w - 1, h - 1], radius=4, fill=fill)
+        """Pill used when keyword PNG is missing (e.g. windfury / stealth)."""
         try:
             from PIL import ImageFont
 
-            font = ImageFont.truetype("msyh.ttc", 11)
+            font = ImageFont.truetype("msyh.ttc", 16)
         except OSError:
             font = ImageFont.load_default()
-        # Center-ish text.
-        tw, th = draw.textbbox((0, 0), text, font=font)[2:]
-        draw.text(((w - tw) / 2, (h - th) / 2 - 1), text, fill=(255, 255, 255, 255), font=font)
+        # Measure text then pad.
+        probe = Image.new("RGBA", (1, 1), (0, 0, 0, 0))
+        pd = ImageDraw.Draw(probe)
+        bbox = pd.textbbox((0, 0), text, font=font)
+        tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
+        pad_x, pad_y = 8, 4
+        w, h = max(44, tw + pad_x * 2), max(24, th + pad_y * 2)
+        img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(img)
+        draw.rounded_rectangle([0, 0, w - 1, h - 1], radius=6, fill=fill)
+        draw.text(((w - tw) / 2 - bbox[0], (h - th) / 2 - bbox[1] - 1), text, fill=(255, 255, 255, 255), font=font)
         return img
