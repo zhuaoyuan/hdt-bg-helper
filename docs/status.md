@@ -7,20 +7,19 @@
 
 ## 最近完成
 
-- **P3-T2 批量模拟服务**（2026-10-05）：`tools/ReplaySim`（自 spike 迁入）+ `tools/strength`（入池/面板/缓存/增量）。验收：单元测试 10 项；t1 二次回填缓存命中 100%；`verify-p3t0` 120/120 在 3σ 内。分支 `feat/P3-T2-strength-batch`。见 [`facts/strength-batch-p3t2.md`](facts/strength-batch-p3t2.md)、[`worklog/2026-10-05-p3t2-strength-batch.md`](worklog/2026-10-05-p3t2-strength-batch.md)。
+- **P3-T2 批量模拟服务**（2026-10-05）：`tools/ReplaySim`（自 spike 迁入）+ `tools/strength`（入池/面板/缓存/增量）。验收：单元测试 10 项；t1 二次回填缓存命中 100%；`verify-p3t0` 120/120 在 3σ 内。**已合入 `main`**（fast-forward）。见 [`facts/strength-batch-p3t2.md`](facts/strength-batch-p3t2.md)、[`worklog/2026-10-05-p3t2-strength-batch.md`](worklog/2026-10-05-p3t2-strength-batch.md)。
 - **P3-T2 / P3-T3 会话提示词**（2026-10-05）：`docs/process/prompts/p3-t2-batch-sim.md`、`p3-t3-percentile.md`。
 - **P3-T1 校准实验**（2026-10-05）：默认 `iterations=500`、`panelGames=30`、\(G_\text{min}=6\)、\(w_\text{relax}=0.25\)+L1、L2 关。见 [`facts/strength-calibration.md`](facts/strength-calibration.md)。
 - **P3-T6 局面阵容图**（2026-10-05）：已合入 `main`。
 
 ## 进行中
 
-- 无（P3-T2 已在分支交付，待合入 `main`）。
+- 无。
 
 ## 下一步（按优先级）
 
-1. **所有者 / agent：** 审阅后把 `feat/P3-T2-strength-batch` 合入 `main`（不要 push 除非要求）。
-2. **agent：P3-T3** — 新会话执行 [`process/prompts/p3-t3-percentile.md`](process/prompts/p3-t3-percentile.md)（\(S/Q\)、bootstrap、放宽、`strength.jsonl`；复核退出标准第 1 条）。
-3. **所有者（可选）：** 继续团子版 + 0.2.0 采集；把新局拷入项目 `data/BgHelperDiag`。
+1. **agent：P3-T3** — 新会话执行 [`process/prompts/p3-t3-percentile.md`](process/prompts/p3-t3-percentile.md)（\(S/Q\)、bootstrap、放宽、`strength.jsonl`；复核退出标准第 1 条）。
+2. **所有者（可选）：** 继续团子版 + 0.2.0 采集；把新局拷入项目 `data/BgHelperDiag`；`git push`（本地 `main` 领先 origin 4 个 commit）。
 
 ## 待决事项默认值（所有者未否决即按此执行）
 
@@ -39,4 +38,4 @@
 
 ## 阻塞 / 需要所有者决定
 
-- 无（合入 `main` 可由所有者或下一会话处理）。
+- 无。
