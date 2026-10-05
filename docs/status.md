@@ -7,7 +7,7 @@
 
 ## 最近完成
 
-- **P3-T3 分位与不确定度**（2026-10-05）：留一局循环赛 \(S/Q\)、聚类 bootstrap（B=1000）、放宽标签、`strength.jsonl`。1.85 队列 30 局 / 329 个 t≤12 己方场面：中位宽 **23.53**、≤20 占比 **25.2%** → **退出标准第 1 条未过**（校准曾≈36）。见 [`facts/strength-percentile-p3t3.md`](facts/strength-percentile-p3t3.md)、[`worklog/2026-10-05-p3t3-strength-percentile.md`](worklog/2026-10-05-p3t3-strength-percentile.md)。分支 `feat/P3-T3-strength-percentile`（待合入）。
+- **P3-T3 分位与不确定度**（2026-10-05）：留一局循环赛 \(S/Q\)、聚类 bootstrap（B=1000）、放宽标签、`strength.jsonl`。1.85 队列 30 局 / 329 个 t≤12 己方场面：中位宽 **23.53**、≤20 占比 **25.2%** → **退出标准第 1 条未过**（校准曾≈36）。见 [`facts/strength-percentile-p3t3.md`](facts/strength-percentile-p3t3.md)、[`worklog/2026-10-05-p3t3-strength-percentile.md`](worklog/2026-10-05-p3t3-strength-percentile.md)。**已合入 `main`**（fast-forward）。
 - **P3-T5 方案获批**（2026-10-05）：[`design/P3-T5-review-view.md`](design/P3-T5-review-view.md)（`approved`）+ [ADR-0013](decisions/0013-offline-static-review-html.md)（`accepted`）。离线静态 HTML；v1 不做方向标注；**不与 T3 并行落地**。见 [`worklog/2026-10-05-p3t5-review-design.md`](worklog/2026-10-05-p3t5-review-design.md)。
 - **P3-T2 批量模拟服务**（2026-10-05）：已合入 `main`。
 - **P3-T1 校准 / P3-T6 阵容图**（2026-10-05）：已合入 `main`。
@@ -18,10 +18,10 @@
 
 ## 下一步（按优先级）
 
-1. **所有者：** 审阅宽度数字（中位 23.5 vs 门槛 15）；决定继续攒局、放宽退出标准，或先做 P3-T4 / 合入 T3。
+1. **所有者：** 审阅宽度数字（中位 23.5 vs 门槛 15）；决定继续攒局、放宽退出标准，或先做 P3-T4 / T5。
 2. **其后：P3-T5 实现**（T5.1–T5.4，用真实 strength；方案已批准）。
 3. **agent：P3-T4** — 分位与名次/承伤有效性；相对 HDT 增量比名次标签（可与 T5 错开）。
-4. **所有者（可选）：** 继续团子版 + 0.2.0 采集；把新局拷入项目 `data/BgHelperDiag`；`git push`。
+4. **所有者（可选）：** 继续团子版 + 0.2.0 采集；把新局拷入项目 `data/BgHelperDiag`；`git push`（本地 `main` 领先 origin）。
 
 ## 待决事项默认值（所有者未否决即按此执行）
 
