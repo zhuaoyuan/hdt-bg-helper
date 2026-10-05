@@ -59,7 +59,7 @@
 - [x] P3-T2 批量模拟服务（状态哈希去重、结果缓存、模拟器版本标记）：`tools/ReplaySim` + `tools/strength`；验收见 `facts/strength-batch-p3t2.md`（2026-10-05）
 - [x] P3-T3 分位计算与不确定度输出：`tools/strength` 循环赛 \(S/Q\) + 聚类 bootstrap + `strength.jsonl`；验收见 `facts/strength-percentile-p3t3.md`（2026-10-05）。**交付完成并已合入 `main`；退出标准第 1 条未达标**（中位宽 23.5、≤20 占 25%）
 - [ ] P3-T4 指标有效性评估（区分度、稳定性、与名次/后续血量的关系；相对 HDT 的增量在名次标签上比）
-- [ ] P3-T5 复盘视图原型（按回合展示分位、置信度、实际对手和结果）
+- [x] P3-T5 复盘视图原型（按回合展示分位、置信度、实际对手和结果）：`tools/review_view` 静态 HTML；见 `design/P3-T5-review-view.md`（2026-10-05；验收 5 待所有者人工核）
 - [x] P3-T6 **局面阵容图离线渲染**（P3-T5 的组件，可单独交付）：无状态单侧随从横排 PNG（`tools/board_render/` `render_side`）；本机 HDT 贴图；v1 只画随从。验收 1–5 通过（所有者 2026-10-05 确认）；已合入 `main`。方案 `design/P3-board-render.md`（implemented）、[ADR-0012](decisions/0012-board-render-side-unit.md)
 
 **退出标准（2026-10-05 所有者确认）：**

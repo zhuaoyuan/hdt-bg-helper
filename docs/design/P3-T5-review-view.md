@@ -1,6 +1,6 @@
 # 方案：赛后复盘视图原型
 
-- **状态：** approved（所有者 2026-10-05 确认；**实现排在 P3-T3 之后**，本提交仅方案）
+- **状态：** implemented（2026-10-05；验收 1–4 本机通过，验收 5 待所有者人工核）
 - **任务：** P3-T5
 - **作者 / 日期：** agent / 2026-10-05
 - **相关：** ADR-0003、ADR-0012、[ADR-0013](../decisions/0013-offline-static-review-html.md)（accepted）；`design/P3-T1-strength-engine.md`、`design/P3-board-render.md`；`facts/standard-layer-import.md`、`facts/strength-cross-p3t0.md` §8
@@ -35,7 +35,7 @@
 | P3-T1 §3.10 | 消费 `data/strength/<bbVersion>/strength.jsonl` 行字段（`percentile`/`ci95`/`widthPts`/`level`/`flags`/`hdt`…） |
 | 标准层 | 回合行已有 `turn`/`myHero`/`oppHero`/`result`/`damage`/`placement`/`resultSource`/`status`/`output` |
 | ADR-0012 / P3-T6 | 阵容图调用方拼接两侧；本视图负责布局，不改 `render_side` |
-| ADR-0013（提议） | 交付形态 = 离线静态 HTML，无常驻服务 |
+| ADR-0013（accepted） | 交付形态 = 离线静态 HTML，无常驻服务 |
 | 愿景 | 赛后重分析；不确定就明说 |
 
 **依赖假设：**
@@ -68,7 +68,7 @@ flowchart LR
 | `join.py` | 按 `gameId` 对齐标准层回合 × 己方 strength 行；缺行填 `missing` |
 | `boards.py` | 调 `board_render` 或复用已有 `data/boards/...`；写出相对路径清单 |
 | `model.py` | 组装单局 `GameReview`（纯数据，无 HTML） |
-| `html.py` | 模板 → 自包含程度足够的静态页（CSS/JS 内联或同目录静态文件） |
+| `page.py` | 模板 → 自包含程度足够的静态页（CSS/JS 内联） |
 | `__main__.py` | CLI |
 | `test_*.py` | join 规则、缺数文案、HTML 冒烟（合成 fixture，不依赖本机对局） |
 
@@ -227,12 +227,15 @@ P3 总退出标准不由 T5 单独承担；T5 只证明「人能用这些数复�
 
 | 步骤 | 内容 | 单独验证 |
 | --- | --- | --- |
-| 步骤 | 内容 | 单独验证 |
-| --- | --- | --- |
 | T5.0 ✅ | 本方案 + ADR-0013 所有者审阅 | approved / accepted（2026-10-05） |
-| T5.1 | `join.py` + `model.py` + 单元测试 | 验收 1（join 部分） |
-| T5.2 | `html.py` 时间线 + 详情（可无图） | fixture HTML；验收 2 |
-| T5.3 | 接入 `board_render` / 已有 boards | 验收 4 |
-| T5.4 | 真实 strength 联调 + 所有者人工核 | 验收 3、5；更新 status/roadmap |
+| T5.1 ✅ | `join.py` + `model.py` + 单元测试 | 验收 1：11 unittest |
+| T5.2 ✅ | `page.py` 时间线 + 详情 | fixture HTML；验收 2 |
+| T5.3 ✅ | 接入 `board_render` / 酒馆等级 | 验收 4：ed11e0 两侧图 + Tier |
+| T5.4 ⏳ | 真实 strength 联调 + 所有者人工核 | 验收 3 本机通过；**验收 5 待所有者** |
 
-**排期（所有者 2026-10-05）：** 不与 P3-T3 并行；**先完成 P3-T3**，再用真实 `strength.jsonl` 落地 T5.1–T5.4。方案单独提交，此前不写代码。
+## 8. 实现记录
+
+- 包：`tools/review_view/`（`join` / `model` / `boards` / `page` / CLI）。模块不用名 `html.py`（与标准库冲突 → `page.py`）。
+- 样本：`data/review/20261005_104908_ed11e0/`（gitignore）；12 回合全部 `ready` 均有分位或 `wide`；T5 己方酒馆 4 / 对手 3。
+- 阵容图默认从 `--boards` **复制**进 `data/review/<gameId>/boards/`，便于 `file://` 打开。
+- P3 退出标准第 1 条未达标不影响本视图消费 `strength.jsonl`。
