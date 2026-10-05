@@ -118,3 +118,20 @@ python spikes\strength-cross\tools\cross_eval.py --smoke --out spikes\strength-c
 python spikes\strength-cross\tools\cross_eval.py --run --mode player_vs_player --out spikes\strength-cross\out
 python spikes\strength-cross\tools\cross_eval.py --run --mode player_vs_both --out spikes\strength-cross\out_both
 ```
+
+## 10. 补测：交叉对的反对称性（2026-10-05，P3-T1 设计期间）
+
+问题：能否用 \(s(b,a)\approx 1-s(a,b)\) 把交叉模拟的成本减半？数据来自 `out_both` 中两个方向都有结果的己方–己方对，未跑新模拟。
+
+| 指标 | 值 |
+| --- | ---: |
+| 双向都有结果的对 | 2638 |
+| \(\lvert s(a,b)+s(b,a)-1\rvert\)：p50 / p90 / p99 / max | 0.0005 / 0.0095 / 0.138 / 0.476 |
+| 偏差 ≤0.02 的比例 / ≤0.05 的比例 | 96.1% / 97.2% |
+| 两局伤害上限不同（88 对）：偏差 >0.05 的比例 | 13.6% |
+| 伤害上限相同（2550 对）：偏差 >0.05 的比例 | 2.4% |
+
+- 本批 275 个己方场面的 `Anomaly` 全为空；任意两局的 `availableRaces` 都不同。
+- 实测 `simulationCount` 全部为 3996（对应设定的 4000 次）。
+- **[推断]** 长尾来自外壳不同：每个方向用的是候选方的大厅规则，可用种族会影响召唤池，伤害上限会影响结果。未逐项验证。
+- 结论：反对称只近似成立，长尾会扭曲排序，P3-T1 方案不采用。

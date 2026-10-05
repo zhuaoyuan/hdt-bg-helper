@@ -37,3 +37,4 @@
 | [ADR-0008](0008-tuanzi-capture-with-record-crosscheck.md) | 个人采集以团子版 HDT + 对战记录对照为主 | accepted（第 4 条被 ADR-0009 取代） |
 | [ADR-0009](0009-allow-disconnect-reconstruct-results.md) | 采集期允许拔线，拔线回合的战果由上下文还原 | accepted |
 | [ADR-0010](0010-hdt-input-dump-as-primary-source.md) | 以 HDT `_input` 反射转储为主数据源，实体快照为后备 | accepted |
+| [ADR-0011](0011-strength-pool-round-robin.md) | 战力分位采用"同版本同回合、留一局循环赛 + 确定性参照面板" | proposed |
