@@ -26,3 +26,4 @@
 | [P1-diagnostic-logger](P1-diagnostic-logger.md) | P1-T3 / P1-T5 实测依据，P2-T2 / P2-T3 原型 | approved |
 | [P2-replay-harness](P2-replay-harness.md) | P2-T0 离线重放与往返验证 | implemented |
 | [P2-data-capture](P2-data-capture.md) | P2-T1 数据采集短方案（原始层=diag；标准层=离线导入） | approved |
+| [P3-T0-core-hypothesis](P3-T0-core-hypothesis.md) | P3-T0 战力分位核心假设早期验证（全交叉） | implemented |

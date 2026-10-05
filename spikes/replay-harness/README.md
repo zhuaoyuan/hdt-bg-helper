@@ -23,6 +23,9 @@ $hdt = "$env:LOCALAPPDATA\HearthstoneDeckTracker\app-1.58.6"
 python spikes\replay-harness\tools\roundtrip.py --root data\BgHelperDiag --versions 1.78.1.0 1.85.0.0
 python spikes\replay-harness\tools\roundtrip.py --root data\BgHelperDiag --mode q011 --limit 40
 python spikes\replay-harness\tools\roundtrip.py --root data\BgHelperDiag --mode q013 --limit 30
+
+# P3 批跑：驻留进程读 JSONL（每行 {"id","input"} 或 {"id","inputPath"}）
+# ReplaySim.exe --bb-dir DIR --batch jobs.jsonl [--iterations N] [--max-duration MS]
 ```
 
 缺 1.80.1 / 1.81.2 的 DLL 时对应局会 `skipped_no_dll`，不算失败。

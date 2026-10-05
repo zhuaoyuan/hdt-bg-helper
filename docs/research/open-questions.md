@@ -11,7 +11,7 @@
 | 编号 | 问题 | 影响 | 验证方式 | 关联 | 状态 |
 | --- | --- | --- | --- | --- | --- |
 | Q-002 | 能否通过反射读取 HDT 内部 `BobsBuddyInvoker._input`，作为对照基准或数据源？稳定性如何？ | 中 | **已跨 4 个 HDT / BB 小版本继续成功**（2026-10-04 批：HDT 1.58.3→1.58.6，BB 1.78.1→1.85.0，537/539 场完整 Input+Output，`probeInitError` 全空）。P2-T1 已采纳为**主数据源**（ADR-0010）；残留 invoker、匿名化误伤见 `facts/diag-capture-batch-20261003.md`。字段级改名：1.85.0 新增 `DiscardCounter`。仍 investigating：大版本/反射成员改名时再测（升级冒烟：`check_capture` + roundtrip） | ADR-0010、`spikes/hdt-diag-logger/` | investigating |
-| Q-008 | 个人对局数据量能否支撑按"同补丁 + 同回合 + 同规则"筛选的参照池？需要多少局？ | 高 | 初步估算（2026-09-25，`research/q008-personal-data-volume.md`）：活跃期约 77 局/月，一个补丁窗口约 45 局；严格分桶下只有回合 ≤12、每桶约 30 个样本能在一个补丁内攒够，再按种族或畸变分桶基本不可行。**P3-T1 设计时需要据此放宽分桶**（跨补丁合并、相邻回合合并、计入对手场面等），并请所有者确认今后的对局频率 | P3 | investigating |
+| Q-008 | 个人对局数据量能否支撑按"同补丁 + 同回合 + 同规则"筛选的参照池？需要多少局？ | 高 | 估算见 `research/q008-personal-data-volume.md`。**P3-T0 实测（2026-10-05）**：同 BB 1.85 + 同回合、约 23 局己方场面时，分位 bootstrap 宽中位 ≈14 百分位点（84%≤20）；加对手场面更稳。严格再按种族/畸变分桶仍不可行。P3-T1：默认同版本+同回合，不足时先加对手场面再 turn±1 | P3、`facts/strength-cross-p3t0.md` | investigating |
 
 ## 已关闭
 
