@@ -7,6 +7,7 @@
 
 ## 最近完成
 
+- **P2 范围重估（提议）**（2026-10-05）：建议把 P2 从 8 项压到 4 项（重放+往返验证合并；诊断插件转正替代新插件骨架与原始层采集；离线导入+质量报告吸收标准层、T6、T7）。**待所有者确认后改 roadmap**。见 [`worklog/2026-10-05-p2-rescope.md`](worklog/2026-10-05-p2-rescope.md)。
 - **10.5 拔线场次 diag 完整性**（2026-10-05）：团子当日对照 BgHelperDiag。无拔线局 `6ab052` 10/10；`c88ca9` 10/11；最新德雷阿佳丝局 `20ad61` **11/12**（仅 T10「直接拔线」缺 Combat；T6–T9/T11「不知结果」阵容+BB 仍在）。泽瑞拉局仅中途启用残局 `bdd811`。见 [`facts/diag-disconnect-completeness-20261005.md`](facts/diag-disconnect-completeness-20261005.md)、[`worklog/2026-10-05-disconnect-diag-completeness.md`](worklog/2026-10-05-disconnect-diag-completeness.md)。
 - **HDT 无响应排查搁置**（2026-10-05）：重启电脑后，无论是否启用 `HdtDiagLogger` 均未再出现未响应。前一日证据指向 HearthMirror Cross-thread Hang、很大概率非本插件；现无法稳定复现，**排查暂停**。若再出现再开。见 [`worklog/2026-10-04-hdt-hang-triage.md`](worklog/2026-10-04-hdt-hang-triage.md)。
 - **采集策略确认**（2026-10-04）：所有者后续以**团子版**采集 + 团子对战记录对照；已写 [ADR-0008](decisions/0008-tuanzi-capture-with-record-crosscheck.md)，并更新 [`process/field-capture.md`](process/field-capture.md)。
