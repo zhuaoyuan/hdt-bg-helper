@@ -3,10 +3,11 @@
 > 这份文档回答：项目现在在哪一步、下一步做什么、有什么阻塞。每次会话结束时由 agent 更新。
 
 **最后更新：** 2026-10-05
-**当前阶段：** P3 — 战力评估引擎（离线）；**P2 已提前退出**（所有者 2026-10-05）；**P3-T0 已完成**
+**当前阶段：** P3 — 战力评估引擎（离线）；**P2 已提前退出**（所有者 2026-10-05）；**P3-T0 已完成**；**P3-T1 方案已批准**
 
 ## 最近完成
 
+- **P3-T1 方案批准**（2026-10-05）：所有者确认 ADR-0011（留一局循环赛 + 固定参照面板；BB 版本分桶；L2 默认关）与 P3 退出标准修订。方案 `design/P3-T1-strength-engine.md` → approved；ADR-0011 → accepted。见 [`worklog/2026-10-05-p3t1-design.md`](worklog/2026-10-05-p3t1-design.md)。
 - **局面阵容图渲染可行性调研**（2026-10-05）：HDT 悬停上次对手阵容链路已定位；诊断 `entities@combat_start`（首选）/ `_input` 场面足以支撑等价阵容条；肖像走 HSJSON；不能直接离线调用 HDT 控件。见 [`facts/hdt-past-opponent-board-render.md`](facts/hdt-past-opponent-board-render.md)。
 - **P3-T0 核心假设早期验证**（2026-10-05）：BB 1.85.0 同回合交叉；冒烟 30/30；pvp 5090 / pvb 10552 对全 ok。成本 ≪10 分钟/局；bootstrap 中位宽 ≈12–14 百分位点；分位对当场战果有中等区分，对本场对阵相对 HDT **无增量**；固定基准集弱于全池；对手场面可进池。不推翻 ADR-0003。见 [`facts/strength-cross-p3t0.md`](facts/strength-cross-p3t0.md)、[`worklog/2026-10-05-p3t0-strength-cross.md`](worklog/2026-10-05-p3t0-strength-cross.md)。
 - **P2 提前退出**（2026-10-05）：配对 7 局 ready 95.1%、对照/重放 78/78。见 [`worklog/2026-10-05-p2-early-exit.md`](worklog/2026-10-05-p2-early-exit.md)。
@@ -15,15 +16,14 @@
 
 ## 进行中
 
-- **P3-T1 设计方案（review）**（2026-10-05）：[`design/P3-T1-strength-engine.md`](design/P3-T1-strength-engine.md) + [ADR-0011](decisions/0011-strength-pool-round-robin.md)（proposed）。要点：BB 版本 + 回合分桶；留一局循环赛定义分位；确定性参照面板（上限 K 局）控制增量成本；放宽阶梯 L0 → L1（t±1）→ L2（跨版本，默认关）→ `insufficient`；按局聚类 bootstrap + 蒙特卡洛噪声；SQLite 缓存存胜/平/负次数，可补跑合并。补测：交叉对反对称只近似成立（2.8% 的对偏差 >0.05），不用它省成本（`facts/strength-cross-p3t0.md` §10）。新增 Q-016（新版本冷启动）。
+- **P3-T1 校准实验**（方案已批准，参数未定）：E1–E3（E5 可选）— 迭代次数（Q-015）、面板上限 K、\(G_\text{min}\) 与 turn±1 权重；结果写 `facts/strength-calibration.md`，填方案 §3.9。
 - **P3-T6 局面阵容图渲染方案（approved）**（2026-10-05）：[`design/P3-board-render.md`](design/P3-board-render.md) + [ADR-0012](decisions/0012-board-render-side-unit.md)。核心为无状态 `render_side`；本机可读 HDT 贴图；v1 只画随从。未写代码。
 
 ## 下一步（按优先级）
 
-1. **所有者：审阅 P3-T1 方案与 ADR-0011**（见下方"阻塞"）。
+1. **agent：P3-T1 校准实验 E1–E3（E5 可选）** — 填 §3.9 默认参数后进 P3-T2。
 2. **agent：实现 P3-T6**（方案已批准）— 按 `design/P3-board-render.md` §7 的 T6.1 → T6.4；与 P3-T1 互不依赖，可并行。
-3. **agent（P3-T1 审阅通过后）：校准实验 E1–E3（E5 可选）** — 迭代次数（Q-015）、面板上限 K、\(G_\text{min}\) 与 turn±1 权重；结果写 `facts/strength-calibration.md`，填方案 §3.9 默认参数表，再进 P3-T2。
-4. **所有者（可选）：** 继续团子版 + 0.2.0 采集（名次标签供 P3-T4）；`git push` 发布 `main`。
+3. **所有者（可选）：** 继续团子版 + 0.2.0 采集（名次标签供 P3-T4）；`git push` 发布 `main`。
 
 ## 待决事项默认值（所有者未否决即按此执行）
 
@@ -34,13 +34,12 @@
 | Q-005 CI 与托管 | 暂不做 CI，只在本机构建 |
 | 个人采集环境 | **团子版 + 对战记录对照**（ADR-0008） |
 | ADR-0004 / ADR-0010 | **已接受** |
+| ADR-0011 | **已接受**（留一局循环赛 + 固定参照面板；BB 版本分桶；L2 默认关） |
 | ADR-0012 | **已接受**（单侧阵容渲染单元；本机 HDT 贴图；v1 只画随从） |
 | ADR-0003 | P3-T0 **不推翻**；有效性主验证在 P3-T4（名次/后续指标） |
+| P3 退出标准 | **已确认**（中位宽 ≤15 且 ≥80% ≤20；增量在名次上比 HDT；见 `roadmap.md`） |
 | P2 退出样本数 | **已关闭**（7 局提前退出） |
 
 ## 阻塞 / 需要所有者决定
 
-- **P3-T1 方案待审阅**，最需要所有者判断的三点：
-  1. 分位语义改为"留一局循环赛 + 确定性参照面板"（ADR-0011）。默认参照群体包含对手场面（己方 + 非幽灵对手），保留"只用己方"开关。
-  2. 按 BB 版本分桶的代价：每次 HDT 带新 BB 版本发布后，前几天会显示 `insufficient`。跨版本放宽 L2 默认关闭，等 E5 / Q-016 的结论。
-  3. P3 退出标准修订建议（方案 §5）：区间宽度"全部 ≤20"改为"中位 ≤15 且 ≥80% ≤20"；增量信息改在名次标签上与 HDT 比较。
+- 无。

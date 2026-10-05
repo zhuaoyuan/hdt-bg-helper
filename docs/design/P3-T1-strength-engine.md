@@ -1,9 +1,9 @@
 # 方案：战力分位引擎（参照池、放宽、抽样、缓存、置信区间）
 
-- **状态：** review
+- **状态：** approved（所有者 2026-10-05 确认 ADR-0011 三点与退出标准修订；下一步跑校准 E1–E3 填 §3.9）
 - **任务：** P3-T1（同时给出 P3-T2 / P3-T3 的实现边界）
 - **作者 / 日期：** agent / 2026-10-05
-- **相关：** ADR-0003、ADR-0004、ADR-0010、[ADR-0011](../decisions/0011-strength-pool-round-robin.md)（proposed）；`facts/strength-cross-p3t0.md`、`facts/replay-roundtrip.md`、`facts/standard-layer-import.md`、`facts/combat-result-reconstruction.md`；Q-008、Q-011、Q-015、Q-016
+- **相关：** ADR-0003、ADR-0004、ADR-0010、[ADR-0011](../decisions/0011-strength-pool-round-robin.md)（accepted）；`facts/strength-cross-p3t0.md`、`facts/replay-roundtrip.md`、`facts/standard-layer-import.md`、`facts/combat-result-reconstruction.md`；Q-008、Q-011、Q-015、Q-016
 
 ## 1. 目标与非目标
 
@@ -203,11 +203,11 @@ flowchart LR
 | P3-T2 | `python -m unittest discover -s tools/strength`：key 稳定性、补跑合并、留一局、幽灵剔除、面板确定性 | 测试全过；对同一批对重跑后与 P3-T0 结果在 3σ 内的比例 ≥99%；第二次运行的缓存命中率为 100% |
 | P3-T3 | 用合成矩阵做单元测试（已知排名、已知区间）；对 1.85 队列全量跑一遍 | 每行都有 `level`；不存在"放宽了却没标注"的行；退出标准第 1 条的统计脚本可以复跑 |
 
-**P3 退出标准修订建议（需所有者确认后再改 `roadmap.md`）：**
+**P3 退出标准（所有者 2026-10-05 确认，已写入 `roadmap.md`）：**
 
-1. 当前主版本队列（≥20 局）中，回合 ≤12 的己方 `ready` 场面：聚类 bootstrap 95% 区间宽度中位 ≤15，且 ≥80% 的场面 ≤20 个百分位点。原表述"全部 ≤20"在小样本下做不到。
+1. 当前主版本队列（≥20 局）中，回合 ≤12 的己方 `ready` 场面：聚类 bootstrap 95% 区间宽度中位 ≤15，且 ≥80% 的场面 ≤20 个百分位点。
 2. 新增 1 局的增量计算 ≤10 分钟（本机墙钟）；一个版本的回填 ≤2 小时。
-3. P3-T4：局均分位与名次、下一回合血量显著相关；"增量信息"改为在名次标签上和 HDT 当场胜率比，不再比本场战果（P3-T0 已证明在本场战果上没有增量，这本来就不是分位要回答的问题）。
+3. P3-T4：局均分位与名次、下一回合血量显著相关；"增量信息"在名次标签上和 HDT 当场胜率比，不再比本场战果。
 
 ## 6. 风险与回退
 
@@ -221,8 +221,8 @@ flowchart LR
 
 ## 7. 任务拆分
 
-1. **本方案 + ADR-0011（proposed）**，状态改为 review，等所有者审阅。
-2. **校准实验 E1–E3（E5 可选）**：扩展 `spikes/strength-cross`，增加 `--iterations-sweep`、面板截断、降采样分析，并写 `facts/strength-calibration.md`。填完 §3.9 后，方案改为 approved。
+1. ~~本方案 + ADR-0011~~ — 已 approved / accepted（2026-10-05）。
+2. **校准实验 E1–E3（E5 可选）**（下一步）：扩展 `spikes/strength-cross`，增加 `--iterations-sweep`、面板截断、降采样分析，并写 `facts/strength-calibration.md`，填完 §3.9。
 3. **P3-T2**：`tools/ReplaySim` 迁移；`tools/strength/` 的入池、面板、缓存、增量批跑，附单元测试。
 4. **P3-T3**：循环赛 \(S/Q\)、聚类 bootstrap、放宽阶梯与标签、`strength.jsonl`、退出统计脚本。
 5. P3-T4 / P3-T5 不变。
