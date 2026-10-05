@@ -7,6 +7,7 @@
 
 ## 最近完成
 
+- **P3-T2 / P3-T3 会话提示词**（2026-10-05）：`docs/process/prompts/p3-t2-batch-sim.md`、`p3-t3-percentile.md`；见 [`worklog/2026-10-05-p3t2-t3-prompts.md`](worklog/2026-10-05-p3t2-t3-prompts.md)。
 - **P3-T1 校准实验**（2026-10-05）：`spikes/strength-cross/tools/calibrate.py`，复用 `out_both` 跑 E1–E3 + E5。默认参数：`iterations=500`、`panelGames=30`、\(G_\text{min}=6\)、\(w_\text{relax}=0.25\) 且启用 L1、L2 关闭。见 [`facts/strength-calibration.md`](facts/strength-calibration.md)、[`worklog/2026-10-05-p3t1-calibration.md`](worklog/2026-10-05-p3t1-calibration.md)。Q-015 / Q-016 已关闭；已合入 `main`。
 - **P3-T6 局面阵容图离线渲染**（2026-10-05）：验收 1–5 全部通过。`tools/board_render/`；已合入 `main`。见 [`worklog/2026-10-05-p3t6-board-render.md`](worklog/2026-10-05-p3t6-board-render.md)。
 - **P3-T1 方案批准**（2026-10-05）：ADR-0011 + `design/P3-T1-strength-engine.md` → approved。
@@ -18,9 +19,9 @@
 
 ## 下一步（按优先级）
 
-1. **agent：P3-T2** — `tools/ReplaySim` 迁移；`tools/strength/` 入池 / 面板 / 缓存 / 增量批跑（默认参数用校准表）。
-2. **agent：P3-T3** — 循环赛 \(S/Q\)、聚类 bootstrap、放宽阶梯、`strength.jsonl`；复核退出标准第 1 条（校准中聚类宽中位≈36 点，正式实现需再核）。
-3. **所有者（可选）：** 继续团子版 + 0.2.0 采集；`git push` 发布 `main`；审阅校准事实文档。
+1. **agent：P3-T2** — 新会话执行 [`process/prompts/p3-t2-batch-sim.md`](process/prompts/p3-t2-batch-sim.md)（`tools/ReplaySim` + `tools/strength` 入池/面板/缓存/增量）。
+2. **agent：P3-T3** — T2 完成后执行 [`process/prompts/p3-t3-percentile.md`](process/prompts/p3-t3-percentile.md)（\(S/Q\)、bootstrap、放宽、`strength.jsonl`；复核退出标准第 1 条）。
+3. **所有者（可选）：** 继续团子版 + 0.2.0 采集；把 `%APPDATA%\...\BgHelperDiag` 新局拷入项目；`git push`；开新会话粘贴上述 prompt。
 
 ## 待决事项默认值（所有者未否决即按此执行）
 
