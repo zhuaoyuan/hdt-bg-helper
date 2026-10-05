@@ -13,10 +13,7 @@ import re
 from collections import Counter
 from typing import Any
 
-
-def load_records(game_dir: str) -> list[dict]:
-    with open(os.path.join(game_dir, "records.jsonl"), encoding="utf-8") as f:
-        return [json.loads(line) for line in f]
+from diag_io import read_records as load_records
 
 
 def load_meta(game_dir: str) -> dict:

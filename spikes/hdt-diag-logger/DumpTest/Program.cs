@@ -114,7 +114,9 @@ namespace DumpTest
 			Rec("combat_phase", new JObject { ["value"] = false });
 			Rec("entities", new JObject { ["reason"] = "combat_end", ["context"] = new JObject { ["turn"] = 4 }, ["entityCount"] = 1 });
 			w.Close(5000);
-			var ok = errors == 0 && File.Exists(Path.Combine(dir, "power.log.gz")) && !File.Exists(Path.Combine(dir, "power.log"));
+			var ok = errors == 0
+				&& File.Exists(Path.Combine(dir, "power.log.gz")) && !File.Exists(Path.Combine(dir, "power.log"))
+				&& File.Exists(Path.Combine(dir, "records.jsonl.gz")) && !File.Exists(Path.Combine(dir, "records.jsonl"));
 			Console.WriteLine($"writer: {(ok ? "OK" : "FAIL")} ({dir})");
 			return ok;
 		}
@@ -124,6 +126,8 @@ namespace DumpTest
 			var saltFile = Path.Combine(Path.GetTempPath(), "hdtdiag-test-salt.txt");
 			var a = new Anonymizer(saltFile);
 			a.AddKnownName("小明#51234");
+			a.AddKnownName("Player#9999");
+			a.AddKnownName("Wind");
 			var cases = new[]
 			{
 				"D 16:28:12.1 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=小明#51234 tag=RESOURCES value=3",
@@ -140,6 +144,19 @@ namespace DumpTest
 			}
 			ok &= a.Apply(cases[3]) == cases[3];
 			ok &= a.Placeholder("小明") == new Anonymizer(saltFile).Placeholder("小明");
+
+			// Structural identifiers must survive even when a known player is named Player / Wind.
+			var structural = "{\"Player\":{\"$type\":\"BobsBuddy.Simulation.Player\",\"ControlledByPlayer\":true,\"Windfury\":false,\"MegaWindfury\":false,\"PlayerTeammate\":null}}";
+			var structuralOut = a.Apply(structural);
+			Console.WriteLine($"  structural -> {structuralOut}");
+			ok &= structuralOut.Contains("\"Player\"")
+				&& structuralOut.Contains("BobsBuddy.Simulation.Player")
+				&& structuralOut.Contains("ControlledByPlayer")
+				&& structuralOut.Contains("Windfury")
+				&& structuralOut.Contains("MegaWindfury")
+				&& structuralOut.Contains("PlayerTeammate");
+			ok &= !a.Apply("Entity=Player#9999").Contains("Player#");
+			ok &= a.Apply("Wind alone") != "Wind alone";
 			Console.WriteLine($"anonymizer: {(ok ? "OK" : "FAIL")}");
 			return ok;
 		}

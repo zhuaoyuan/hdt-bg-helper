@@ -3,15 +3,17 @@ import json
 import sys
 from pathlib import Path
 
+from diag_io import iter_record_lines, records_path
+
 ROOT = Path(sys.argv[1] if len(sys.argv) > 1 else r"C:\projects\github\hdt-bg-helper\data\BgHelperDiag")
 
 for gd in sorted(ROOT.iterdir()):
-    if not gd.is_dir():
+    if not gd.is_dir() or not records_path(str(gd)):
         continue
     meta = json.loads((gd / "meta.json").read_text(encoding="utf-8"))
     status = "no_input"
     odd = []
-    for line in open(gd / "records.jsonl", encoding="utf-8"):
+    for line in iter_record_lines(str(gd)):
         r = json.loads(line)
         if r.get("type") != "hdt_bb" or not r.get("hasInput"):
             continue

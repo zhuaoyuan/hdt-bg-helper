@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
@@ -16,9 +17,40 @@ namespace HdtDiagLogger
 		private const int MinNameLength = 2;
 		private static readonly Regex AccountId = new(@"(hi|lo)=\d{6,}", RegexOptions.Compiled);
 
+		/// <summary>
+		/// Bare names that are also Bob's Buddy / dump structural identifiers. Replacing them as substrings
+		/// (or even as whole tokens next to <c>.</c> / JSON quotes) corrupts Input keys and <c>$type</c>.
+		/// BattleTags like <c>Player#1234</c> are still anonymised via <see cref="BattleTag"/>.
+		/// See facts/diag-capture-batch-20261003.md §4.1 and facts/replay-roundtrip.md.
+		/// </summary>
+		private static readonly HashSet<string> ReservedBareNames = new(StringComparer.Ordinal)
+		{
+			"Player",
+			"Opponent",
+			"PlayerTeammate",
+			"OpponentTeammate",
+			"ControlledByPlayer",
+			"DuosInputPlayer",
+			"DuosInputPlayerTeammate",
+			"Windfury",
+			"MegaWindfury",
+			"Simulation",
+		};
+
+		// Identifier-ish characters for word boundaries. Include '.' so namespace segments in $type
+		// (e.g. BobsBuddy.Simulation.Player) are not treated as bare name tokens.
+		private const string BoundaryClass = @"A-Za-z0-9_.";
+
 		private readonly byte[] _salt;
 		private readonly ConcurrentDictionary<string, string> _cache = new();
-		private volatile string[] _knownNames = Array.Empty<string>();
+		private volatile NameRule[] _rules = Array.Empty<NameRule>();
+
+		private sealed class NameRule
+		{
+			public string Name = "";
+			public string Token = "";
+			public Regex Pattern = null!;
+		}
 
 		public Anonymizer(string saltFile)
 		{
@@ -40,11 +72,32 @@ namespace HdtDiagLogger
 			if(string.IsNullOrWhiteSpace(name) || name!.Length < MinNameLength)
 				return;
 			var bare = name.Split('#')[0];
-			var current = _knownNames;
-			if(current.Contains(name) && (bare.Length < MinNameLength || current.Contains(bare)))
+			var current = _rules;
+			var haveFull = current.Any(r => r.Name == name);
+			var haveBare = bare.Length < MinNameLength || ReservedBareNames.Contains(bare)
+				|| current.Any(r => r.Name == bare);
+			if(haveFull && haveBare)
 				return;
-			_knownNames = current.Concat(new[] { name, bare }).Where(x => x.Length >= MinNameLength).Distinct()
-				.OrderByDescending(x => x.Length).ToArray();
+
+			var names = current.Select(r => r.Name).ToList();
+			if(!haveFull)
+				names.Add(name);
+			if(!haveBare && bare.Length >= MinNameLength && !ReservedBareNames.Contains(bare))
+				names.Add(bare);
+
+			_rules = names
+				.Where(x => x.Length >= MinNameLength)
+				.Distinct()
+				.OrderByDescending(x => x.Length)
+				.Select(n => new NameRule
+				{
+					Name = n,
+					Token = n.Split('#')[0],
+					Pattern = new Regex(
+						$@"(?<![{BoundaryClass}]){Regex.Escape(n)}(?![{BoundaryClass}])",
+						RegexOptions.Compiled),
+				})
+				.ToArray();
 		}
 
 		public string Placeholder(string value) => _cache.GetOrAdd(value, v =>
@@ -58,10 +111,12 @@ namespace HdtDiagLogger
 		{
 			text = BattleTag.Replace(text, m => Placeholder(m.Value.Split('#')[0]));
 			text = AccountId.Replace(text, m => m.Groups[1].Value + "=" + Placeholder(m.Value));
-			foreach(var name in _knownNames)
+			foreach(var rule in _rules)
 			{
-				if(text.IndexOf(name, StringComparison.Ordinal) >= 0)
-					text = text.Replace(name, Placeholder(name.Split('#')[0]));
+				if(text.IndexOf(rule.Name, StringComparison.Ordinal) < 0)
+					continue;
+				var placeholder = Placeholder(rule.Token);
+				text = rule.Pattern.Replace(text, placeholder);
 			}
 			return text;
 		}

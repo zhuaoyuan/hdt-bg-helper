@@ -1,9 +1,10 @@
 """Q-006 timing: 3533 vs 2022 vs phase vs Input. Also fix TagTransfer named-tag match."""
-import gzip
 import json
 import os
 import re
 from collections import Counter, defaultdict
+
+from diag_io import open_text, power_path, read_records
 
 ROOT = os.path.join(os.environ["APPDATA"], "HearthstoneDeckTracker", "BgHelperDiag")
 
@@ -14,19 +15,17 @@ def games():
 
 
 def recs(d):
-    with open(os.path.join(d, "records.jsonl"), encoding="utf-8") as f:
-        return [json.loads(r) for r in f]
+    return read_records(d)
 
 
 def raw_lines(d, seqs):
     want = set(seqs)
-    p = os.path.join(d, "power.log.gz")
-    if not os.path.exists(p):
-        p = os.path.join(d, "power.log")
-    opener = gzip.open if p.endswith(".gz") else open
+    p = power_path(d)
+    if not p:
+        return {}
     found = {}
     try:
-        with opener(p, "rt", encoding="utf-8", errors="replace") as f:
+        with open_text(p) as f:
             for row in f:
                 seq, _ms, line = row.rstrip("\n").split("\t", 2)
                 seq = int(seq)

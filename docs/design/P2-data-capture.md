@@ -151,6 +151,15 @@ P2-T1 本身是文档任务，验收：
 
 | 步 | 内容 | 状态 |
 | --- | --- | --- |
-| T1a | 本方案 + ADR-0004 细化 + ADR-0010 | 本会话 |
-| T2 | 插件：匿名化词边界 + 局末压缩 | 待做 |
+| T1a | 本方案 + ADR-0004 细化 + ADR-0010 | 完成（2026-10-05） |
+| T2 | 插件：匿名化词边界 + 局末压缩 | 完成（2026-10-05，插件 0.2.0） |
 | T3 | 离线导入 + 质量报告 | 待做（可与 T2 并行） |
+
+## 8. 实现记录
+
+### P2-T2（2026-10-05）
+
+- 插件版本 **0.2.0**：`Anonymizer` 对已知玩家名用词边界替换（`[A-Za-z0-9_.]` 两侧），并跳过 BB 结构保留名（`Player` / `Opponent` / `Windfury` 等）的裸名替换；`Player#1234` 仍走 BattleTag 规则。
+- `RecordWriter` 局末将 `records.jsonl` 压成 `records.jsonl.gz`（与 `power.log.gz` 相同；HDT 中途退出可能留下未压缩文件）。
+- 工具侧新增 `tools/diag_io.py`，`check_capture` / 各 eval / `replay-harness/roundtrip.py` 同时认 `.jsonl` 与 `.jsonl.gz`。
+- 未做（按方案可选）：`2717` 补录、`hearthstoneBuild` 推迟写入；残留 invoker / `2022=0` 选取仍在 T3。

@@ -12,12 +12,13 @@ Options:
 Output contains only counts, ids and anonymised values, so it can be pasted into the repo.
 """
 import argparse
-import gzip
 import json
 import os
 import re
 import sys
 from collections import Counter, defaultdict
+
+from diag_io import open_text, power_path, read_records
 
 DEFAULT_ROOT = os.path.join(os.environ.get("APPDATA", ""), "HearthstoneDeckTracker", "BgHelperDiag")
 DEFAULT_HS_LOGS = r"C:\Program Files (x86)\Hearthstone\Logs"
@@ -32,23 +33,9 @@ PLACEHOLDER = re.compile(r"player_[0-9a-f]{8}")
 ENTITY = re.compile(r"Entity=(?:\[[^\]]*\]|\S+)")
 
 
-def open_text(path):
-    if path.endswith(".gz"):
-        return gzip.open(path, "rt", encoding="utf-8", errors="replace")
-    return open(path, "r", encoding="utf-8", errors="replace")
-
-
-def raw_path(game_dir):
-    for name in ("power.log.gz", "power.log"):
-        p = os.path.join(game_dir, name)
-        if os.path.exists(p):
-            return p
-    return None
-
-
 def read_raw(game_dir):
     """Yields (seq, ms, line) from power.log[.gz]; tolerates a truncated gzip trailer (HDT killed)."""
-    p = raw_path(game_dir)
+    p = power_path(game_dir)
     if not p:
         return
     try:
@@ -58,20 +45,6 @@ def read_raw(game_dir):
                 yield int(seq), int(ms), line
     except EOFError:
         print("  WARN: power.log.gz is truncated")
-
-
-def read_records(game_dir):
-    p = os.path.join(game_dir, "records.jsonl")
-    if not os.path.exists(p):
-        return []
-    out = []
-    with open(p, encoding="utf-8") as f:
-        for i, row in enumerate(f, 1):
-            try:
-                out.append(json.loads(row))
-            except json.JSONDecodeError as e:
-                out.append({"type": "_bad_json", "line": i, "error": str(e)})
-    return out
 
 
 def segment_combats(records):

@@ -27,11 +27,11 @@ namespace HdtDiagLogger
 		private GameSession? _session;
 
 		public string Name => "BG Helper Diagnostic Logger";
-		public string Description => "Spike (hdt-bg-helper): records Battlegrounds games as completely as possible for offline analysis. "
+		public string Description => "hdt-bg-helper capture tool: records Battlegrounds games for offline import and analysis. "
 			+ "Records are stored locally under %APPDATA%\\HearthstoneDeckTracker\\BgHelperDiag and BattleTags are anonymised.";
 		public string ButtonText => "Open records folder";
 		public string Author => "hdt-bg-helper";
-		public Version Version => new(0, 1, 0);
+		public Version Version => new(0, 2, 0);
 		public MenuItem MenuItem => null!;
 
 		public void OnLoad()

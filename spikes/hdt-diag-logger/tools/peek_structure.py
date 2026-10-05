@@ -3,9 +3,12 @@ import json
 import os
 import sys
 
+from diag_io import iter_record_lines, records_path
+
 root = os.path.join(os.environ["APPDATA"], "HearthstoneDeckTracker", "BgHelperDiag")
 game = sys.argv[1] if len(sys.argv) > 1 else "20260925_170955_cd944c"
-path = os.path.join(root, game, "records.jsonl")
+if not records_path(os.path.join(root, game)):
+    raise SystemExit(f"no records.jsonl[.gz] under {root}/{game}")
 
 
 def keys_of(obj, prefix="", depth=0, out=None, max_depth=3):
@@ -41,8 +44,7 @@ def find_input(invoker):
 
 
 seen = {"entities": 0, "hdt_bb": 0}
-with open(path, encoding="utf-8") as f:
-    for line in f:
+for line in iter_record_lines(os.path.join(root, game)):
         r = json.loads(line)
         t = r.get("type")
         if t == "entities" and seen["entities"] == 0 and r.get("reason") == "combat_start":

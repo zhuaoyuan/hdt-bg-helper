@@ -107,17 +107,24 @@ namespace HdtDiagLogger
 			{
 				_raw.Dispose();
 				_records.Dispose();
-				var src = Path.Combine(_dir, "power.log");
-				using(var input = System.IO.File.OpenRead(src))
-				using(var output = System.IO.File.Create(src + ".gz"))
-				using(var gz = new GZipStream(output, CompressionLevel.Optimal))
-					input.CopyTo(gz);
-				System.IO.File.Delete(src);
+				GzipAndDelete(Path.Combine(_dir, "power.log"));
+				GzipAndDelete(Path.Combine(_dir, "records.jsonl"));
 			}
 			catch(Exception ex)
 			{
 				_onError(ex);
 			}
+		}
+
+		private static void GzipAndDelete(string src)
+		{
+			if(!System.IO.File.Exists(src))
+				return;
+			using(var input = System.IO.File.OpenRead(src))
+			using(var output = System.IO.File.Create(src + ".gz"))
+			using(var gz = new GZipStream(output, CompressionLevel.Optimal))
+				input.CopyTo(gz);
+			System.IO.File.Delete(src);
 		}
 
 		private void Write(StreamWriter w, string line)
@@ -130,8 +137,9 @@ namespace HdtDiagLogger
 		public void Dispose() => Close(0);
 
 		/// <summary>
-		/// Stops accepting items; the writer thread drains the queue, closes the files and gzips power.log.
-		/// Waits at most <paramref name="waitMs"/>; if HDT exits first, power.log stays uncompressed.
+		/// Stops accepting items; the writer thread drains the queue, closes the files and gzips
+		/// <c>power.log</c> / <c>records.jsonl</c>. Waits at most <paramref name="waitMs"/>; if HDT
+		/// exits first, those files may stay uncompressed.
 		/// </summary>
 		public void Close(int waitMs)
 		{

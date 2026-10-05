@@ -41,7 +41,7 @@
 
 - [x] P2-T0 **离线重放与往返验证**（合并原 T0、T5）：把诊断记录里 HDT `_input` 的反射转储按字段还原成 BB `Input`，按 `meta` 的 BB 版本在独立进程里模拟，与记录的 `Output` 对照。附带 Q-009（耗时）、Q-011（跨 BB 版本）、Q-013（未赋值字段）实验。P3-T0 的前置。结论见 `facts/replay-roundtrip.md`、`spikes/replay-harness/`（2026-10-05）
 - [x] P2-T1 **短方案 + ADR**（`design/P2-data-capture.md`）：诊断记录目录即原始层，标准层由离线导入生成；以 HDT `_input` 为主数据源、实体快照只作后备（[ADR-0010](decisions/0010-hdt-input-dump-as-primary-source.md)，并接受细化后的 [ADR-0004](decisions/0004-capture-light-compute-async.md)）；压缩与保留策略。不再单独设计三层存储与 schema 演进体系（2026-10-05）
-- [ ] P2-T2 **诊断插件转正**（替代原插件骨架、原始层采集）：只做必要补丁——匿名化加词边界，不再误改 `Player` / `$type`；`records.jsonl` 局末压缩。过滤残留 invoker、选取 `2022=0` 之后的记录放在离线导入里做；`2717` 补录、`hearthstoneBuild` 修正为可选项
+- [x] P2-T2 **诊断插件转正**（替代原插件骨架、原始层采集）：插件 **0.2.0**——匿名化词边界 + 结构保留名，不再误改 `Player` / `$type` / `ControlledByPlayer` / `Windfury`；`records.jsonl` 局末压成 `.gz`。过滤残留 invoker、选取 `2022=0` 之后的记录放在离线导入里做；`2717` 补录、`hearthstoneBuild` 修正为可选项（未做）
 - [ ] P2-T3 **离线导入与质量报告**（吸收原标准层投影、质量报告、复盘报告 v0）：诊断记录 + 团子文本批量配对 → 每回合一行（回合、对手英雄、Input 引用、Output、实际胜负与伤害、名次、完整性状态 `ready` / `partial` / `unsupported` / `invalid`）。拔线回合尽量用上下文还原战果，并标注来源（ADR-0009、Q-014）。报告包括：各状态占比、团子对照通过率、重放偏差、P1 清单缺口的正例出现情况、HDT 升级后的冒烟检查。这张表也是 P3-T0 的输入和"HDT 当场胜率"基线
 
 **退出标准（P2-T1 可修正）：** 连续 10 局真实对局中：非"直接拔线"回合的 `ready` 占比 ≥ 90%；`ready` 回合与团子记录的阵容、五率、模拟次数 100% 一致；用同版本 BB 重放的胜/平/负率与记录之差在两次抽样合并误差的 3σ 以内。

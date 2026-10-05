@@ -1,8 +1,8 @@
 # Spike：诊断记录插件（HdtDiagLogger）
 
-**目的：** 所有者带着这个插件正常打酒馆战棋，插件在本机尽可能完整地记录每场战斗，供 agent 离线分析数据清单（P1-T3 / P1-T5）并实测 Q-002、Q-006、Q-007。方案见 [`docs/design/P1-diagnostic-logger.md`](../../docs/design/P1-diagnostic-logger.md)。
+**目的：** 所有者带着这个插件正常打酒馆战棋，插件在本机尽可能完整地记录每场战斗，供离线导入（P2-T3）与战力评估（P3）。方案见 [`docs/design/P1-diagnostic-logger.md`](../../docs/design/P1-diagnostic-logger.md)、[`docs/design/P2-data-capture.md`](../../docs/design/P2-data-capture.md)。
 
-**状态（2026-09-26）：** 官方 HDT 1.58.3 上 3 局单人、27/27 场战斗验收通过。字段分析见 [`docs/facts/diag-capture-measured.md`](../../docs/facts/diag-capture-measured.md)。分析时只用本场 `2022=0` 及之后的 `hdt_bb`（新对局开头会倒出上一局残留 invoker）。
+**状态（2026-10-05）：** 插件 **0.2.0**（P2-T2 转正补丁）。匿名化不再误伤 `Player` / `$type` 等结构标识；局末压缩 `records.jsonl.gz`。官方 HDT 1.58.3 上曾有 3 局单人、27/27 场战斗验收通过（0.1.0）；字段分析见 [`docs/facts/diag-capture-measured.md`](../../docs/facts/diag-capture-measured.md)。分析时只用本场 `2022=0` 及之后的 `hdt_bb`（新对局开头会倒出上一局残留 invoker）。
 
 换一台没有开发环境的电脑继续打、继续记：见 [`docs/process/field-capture.md`](../../docs/process/field-capture.md)。只需拷走本机已部署的 `HdtDiagLogger.dll`，不必在新电脑上编译。
 
@@ -15,7 +15,7 @@
    ```
 
    脚本自动找 `%LOCALAPPDATA%\HearthstoneDeckTracker` 下最新的 `app-*` 目录编译，再把 DLL 复制到 `%APPDATA%\HearthstoneDeckTracker\Plugins`。
-2. 启动 HDT，在"选项 > 追踪器 > 插件"里启用 "BG Helper Diagnostic Logger"。HDT 日志里应出现 `[BgHelperDiag] loaded 0.1.0; HDT=…, BobsBuddy=…`。如果还有一行 `BobsBuddyInvoker probe unavailable`，说明反射失败（Q-002）。
+2. 启动 HDT，在"选项 > 追踪器 > 插件"里启用 "BG Helper Diagnostic Logger"。HDT 日志里应出现 `[BgHelperDiag] loaded 0.2.0; HDT=…, BobsBuddy=…`。如果还有一行 `BobsBuddyInvoker probe unavailable`，说明反射失败（Q-002）。
 3. 正常打酒馆战棋。每局一个目录：`%APPDATA%\HearthstoneDeckTracker\BgHelperDiag\<开局时间>_<短 id>\`。插件设置里的按钮可以打开这个目录。
 4. 检查记录：
 
@@ -32,7 +32,7 @@
 | --- | --- |
 | `meta.json` | schema 版本；插件、HDT、BobsBuddy、HearthDb 的版本；炉石 build；游戏类型；行数、记录数、错误数；反射初始化错误 |
 | `power.log.gz` | HDT 转给插件的每一行 Power.log：`行号 \t 毫秒 \t 原始行`（已匿名化）。对局结束后才压缩；HDT 中途被关闭时留下未压缩的 `power.log` |
-| `records.jsonl` | 每行一条记录，公共字段 `seq`、`lineSeq`（记录时已收到的行数）、`ms`、`type` |
+| `records.jsonl.gz` | 每行一条记录（0.2.0 起局末压缩；旧数据可能仍是未压缩的 `records.jsonl`）。公共字段 `seq`、`lineSeq`、`ms`、`type` |
 
 `records.jsonl` 的 `type`：
 
@@ -52,10 +52,12 @@
 cd spikes\hdt-diag-logger\DumpTest
 & "C:\Program Files\dotnet\dotnet.exe" build -c Release
 .\bin\Release\net472\DumpTest.exe
-python ..\tools\check_capture.py --root out\fake_root --hs-logs none
+python ..\tools\check_capture.py --root ..\out\fake_root --hs-logs none
 ```
 
 2026-09-25 结果（BB 1.78.1）：7 对 7 白板的 `Input` 共 210 个节点、约 37 KB JSON，首次序列化 12–22 ms（含 JIT 和反射缓存），之后约 1 ms；两次序列化结果一致，模拟前后 `Input` 的序列化结果也一致；`Output` 约 23 KB（含每次模拟的伤害结果）。唯一被跳过的类型是每个随从引用的 `Simulator`。匿名化和写入器检查通过。`out/` 里是从闭源 DLL 派生的输出，不入库。
+
+2026-10-05（0.2.0）：同上路径全部通过；额外断言 `Player`/`Windfury`/`ControlledByPlayer`/`$type` 不被已知名腐蚀；局末产出 `records.jsonl.gz`。
 
 ## 战果还原评估（Q-014）
 
@@ -69,4 +71,5 @@ python spikes\hdt-diag-logger\tools\eval_q014_reconstruct.py [--csv out\results.
 
 - 只保证单人模式；双人模式照常记录，检查脚本不区分队友。
 - 在 `OnGameStart` 之前到达的日志行会先放进缓冲区（最多 5,000 行），开局时从最后一个 `CREATE_GAME` 起补写。补写行的 `ms` 是补写时刻。
-- 匿名化会替换所有出现的已知玩家名（最短 2 个字符）。如果玩家名碰巧是某个卡牌名的一部分，那段卡牌名也会被替换。
+- 匿名化会替换已知玩家名的**整词**（最短 2 个字符；两侧不能是 `A-Za-z0-9_.`）。BB 结构保留名（如裸名 `Player`）不替换，以免腐蚀 JSON 键 / `$type`；`Player#1234` 仍会匿名化。若玩家名碰巧是某个卡牌名的一部分且满足词边界，那段仍可能被替换。
+- 0.1.0 已落盘的旧局若曾被 `Player`/`Wind` 等名腐蚀，导入侧仍需 `fix_anon`（见 `spikes/replay-harness/tools/roundtrip.py`）；0.2.0 起的新数据不应再出现。

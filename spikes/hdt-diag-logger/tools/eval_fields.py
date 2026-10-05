@@ -4,6 +4,8 @@ import sys
 from collections import Counter, defaultdict
 from pathlib import Path
 
+from diag_io import iter_record_lines, records_path
+
 ROOT = Path(sys.argv[1] if len(sys.argv) > 1 else r"C:\projects\github\hdt-bg-helper\data\BgHelperDiag")
 
 
@@ -65,12 +67,12 @@ def main():
     combat_inputs = 0
 
     for gd in sorted(ROOT.iterdir()):
-        if not gd.is_dir():
+        if not gd.is_dir() or not records_path(str(gd)):
             continue
         meta = json.loads((gd / "meta.json").read_text(encoding="utf-8"))
         bb = meta.get("bobsBuddy", {}).get("fileVersion")
         seen_schema = False
-        for line in open(gd / "records.jsonl", encoding="utf-8"):
+        for line in iter_record_lines(str(gd)):
             r = json.loads(line)
             if r.get("type") != "hdt_bb" or not r.get("hasInput"):
                 continue

@@ -2,11 +2,12 @@
 
 Output is counts, tag ids and anonymised values only — safe to paste into the repo.
 """
-import gzip
 import json
 import os
 import re
 from collections import Counter, defaultdict
+
+from diag_io import open_text, power_path, read_records
 
 ROOT = os.path.join(os.environ["APPDATA"], "HearthstoneDeckTracker", "BgHelperDiag")
 
@@ -62,28 +63,18 @@ def games():
             if os.path.isdir(os.path.join(ROOT, d))]
 
 
-def read_records(game_dir):
-    path = os.path.join(game_dir, "records.jsonl")
-    out = []
-    with open(path, encoding="utf-8") as f:
-        for row in f:
-            out.append(json.loads(row))
-    return out
-
-
 def read_raw_at(game_dir, seqs):
     """Return {seq: line} for requested lineSeqs (and a small window)."""
     want = set()
     for s in seqs:
         if s:
             want.update(range(max(1, s - 2), s + 3))
-    p = os.path.join(game_dir, "power.log.gz")
-    if not os.path.exists(p):
-        p = os.path.join(game_dir, "power.log")
+    p = power_path(game_dir)
+    if not p:
+        return {}
     found = {}
-    opener = gzip.open if p.endswith(".gz") else open
     try:
-        with opener(p, "rt", encoding="utf-8", errors="replace") as f:
+        with open_text(p) as f:
             for row in f:
                 seq, _ms, line = row.rstrip("\n").split("\t", 2)
                 seq = int(seq)

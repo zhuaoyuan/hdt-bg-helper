@@ -5,6 +5,8 @@ import os
 import sys
 from pathlib import Path
 
+from diag_io import read_records
+
 ROOT = Path(sys.argv[1] if len(sys.argv) > 1 else r"C:\projects\github\hdt-bg-helper\data\BgHelperDiag")
 APPDATA = Path(os.environ.get("APPDATA", "")) / "HearthstoneDeckTracker" / "BgHelperDiag"
 
@@ -17,17 +19,7 @@ def load_meta(gd: Path):
 
 
 def load_records(gd: Path):
-    p = gd / "records.jsonl"
-    if not p.exists():
-        return []
-    out = []
-    with open(p, encoding="utf-8") as f:
-        for i, line in enumerate(f, 1):
-            try:
-                out.append(json.loads(line))
-            except Exception as e:
-                out.append({"type": "_bad_json", "line": i, "error": str(e)})
-    return out
+    return read_records(str(gd))
 
 
 def segment_combats(records):
@@ -145,7 +137,7 @@ def analyze_game(gd: Path):
                 missing_detail["no_combat_end_entities"] += 1
 
     sizes = {}
-    for name in ("records.jsonl", "power.log.gz", "power.log", "meta.json"):
+    for name in ("records.jsonl.gz", "records.jsonl", "power.log.gz", "power.log", "meta.json"):
         p = gd / name
         if p.exists():
             sizes[name] = p.stat().st_size
@@ -216,7 +208,7 @@ def main():
         errs = m.get("errors", -1)
         dumps = m.get("hdtBobsBuddyDumps", -1)
         hdt_bb = g["types"].get("hdt_bb", 0)
-        mb = g["sizes"].get("records.jsonl", 0) / 1e6
+        mb = (g["sizes"].get("records.jsonl.gz", 0) or g["sizes"].get("records.jsonl", 0)) / 1e6
         duos = m.get("isBattlegroundsDuosMatch")
         print(
             f'{g["id"]:28} {str(end):14} {g["n_combats"]:5} {g["complete_combats"]:4} '
@@ -285,11 +277,13 @@ def main():
     for d, n in sorted(by_day.items()):
         print(d, n)
 
-    total_rec = sum(g["sizes"].get("records.jsonl", 0) for g in games)
+    total_rec = sum(
+        g["sizes"].get("records.jsonl.gz", 0) + g["sizes"].get("records.jsonl", 0) for g in games
+    )
     total_pow = sum(
         g["sizes"].get("power.log.gz", 0) + g["sizes"].get("power.log", 0) for g in games
     )
-    print(f"\nSIZE records.jsonl={total_rec / 1e9:.2f} GB  power={total_pow / 1e6:.1f} MB")
+    print(f"\nSIZE records[.jsonl|.gz]={total_rec / 1e9:.2f} GB  power={total_pow / 1e6:.1f} MB")
     print(f"avg records/game={total_rec / max(len(games), 1) / 1e6:.1f} MB")
 
     # cohort completeness

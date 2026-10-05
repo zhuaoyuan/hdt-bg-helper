@@ -21,6 +21,7 @@ import os
 import re
 from collections import Counter, defaultdict
 
+from diag_io import read_records as load_records, records_path
 from power_replay import read_power, TagState
 
 REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
@@ -32,10 +33,6 @@ DEFAULT_TUANZI = os.path.join(REPO, "data", "tuanzi")
 
 
 # ---------------------------------------------------------------- diag side
-
-def load_records(game_dir: str) -> list[dict]:
-    with open(os.path.join(game_dir, "records.jsonl"), encoding="utf-8") as f:
-        return [json.loads(line) for line in f]
 
 
 def eff_hp(h: dict | None) -> int | None:
@@ -344,7 +341,7 @@ def main():
             continue
         for name in sorted(os.listdir(root)):
             d = os.path.join(root, name)
-            if os.path.isfile(os.path.join(d, "records.jsonl")) and os.path.isfile(os.path.join(d, "power.log.gz")):
+            if records_path(d) and os.path.isfile(os.path.join(d, "power.log.gz")):
                 dirs.setdefault(name, d)
 
     game_rows = {}

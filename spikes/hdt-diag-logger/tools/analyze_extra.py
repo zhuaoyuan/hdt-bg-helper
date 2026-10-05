@@ -3,6 +3,8 @@ import json
 import os
 from collections import Counter
 
+from diag_io import read_records
+
 ROOT = os.path.join(os.environ["APPDATA"], "HearthstoneDeckTracker", "BgHelperDiag")
 
 
@@ -26,7 +28,7 @@ out_keys = Counter()
 durations = []
 for g in games():
     name = os.path.basename(g)
-    recs = [json.loads(r) for r in open(os.path.join(g, "records.jsonl"), encoding="utf-8")]
+    recs = read_records(g)
     snaps = [r for r in recs if r.get("type") == "entities" and r.get("reason") == "combat_start"]
     bbs = [r for r in recs if r.get("type") == "hdt_bb"]
     print(f"\n=== {name} leftover keys / Output fields ===")

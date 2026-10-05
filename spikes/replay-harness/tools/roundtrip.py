@@ -25,6 +25,8 @@ HERE = Path(__file__).resolve().parent
 HARNESS = HERE.parent
 DEFAULT_BB_MAP = HARNESS / "bb-dirs.json"
 DEFAULT_EXE = HARNESS / "ReplaySim" / "bin" / "run" / "ReplaySim.exe"
+sys.path.insert(0, str(HARNESS.parent / "hdt-diag-logger" / "tools"))
+from diag_io import open_text, records_path  # noqa: E402
 
 # Anonymizer does bare substring Replace on known names, so identifiers that
 # contain those names as substrings get corrupted too (Player→ControlledByPlayer,
@@ -85,11 +87,11 @@ def fix_anon(obj):
 
 
 def read_records(game_dir: Path) -> list[dict]:
-    path = game_dir / "records.jsonl"
-    if not path.exists():
+    path = records_path(str(game_dir))
+    if not path:
         return []
     out = []
-    with open(path, encoding="utf-8") as f:
+    with open_text(path) as f:
         for line in f:
             out.append(json.loads(line))
     return out

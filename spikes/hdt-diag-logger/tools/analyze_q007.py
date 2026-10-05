@@ -3,6 +3,8 @@ import json
 import os
 from collections import Counter
 
+from diag_io import read_records
+
 ROOT = os.path.join(os.environ["APPDATA"], "HearthstoneDeckTracker", "BgHelperDiag")
 
 COUNTERS = [
@@ -57,7 +59,7 @@ for d in sorted(os.listdir(ROOT)):
     g = os.path.join(ROOT, d)
     if not os.path.isdir(g):
         continue
-    recs = [json.loads(r) for r in open(os.path.join(g, "records.jsonl"), encoding="utf-8")]
+    recs = read_records(g)
     tags = [r for r in recs if r.get("type") == "combat_tag"]
     snaps = [r for r in recs if r.get("type") == "entities" and r.get("reason") == "combat_start"]
     bbs = [r for r in recs if r.get("type") == "hdt_bb" and r.get("hasInput")]
@@ -127,7 +129,7 @@ for d in sorted(os.listdir(ROOT)):
     g = os.path.join(ROOT, d)
     if not os.path.isdir(g):
         continue
-    recs = [json.loads(r) for r in open(os.path.join(g, "records.jsonl"), encoding="utf-8")]
+    recs = read_records(g)
     tags = [r for r in recs if r.get("type") == "combat_tag"]
     snaps = [r for r in recs if r.get("type") == "entities" and r.get("reason") == "combat_start"]
     bbs = [r for r in recs if r.get("type") == "hdt_bb" and r.get("hasInput")]

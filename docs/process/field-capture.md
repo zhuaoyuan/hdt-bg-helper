@@ -2,22 +2,22 @@
 
 > 打酒馆战棋、把诊断记录带回来；若用团子版，再带上对战记录文本做交叉验证。不需要在打本机上装 Git / .NET / Python（验收可在有仓库的机器上做）。
 >
-> 插件版本：HdtDiagLogger **0.1.0**。采集环境默认见 ADR-0008（团子版 + 对战记录对照）；插件字段语义仍以官方 HDT 为准（ADR-0007）。
+> 插件版本：HdtDiagLogger **0.2.0**（P2-T2）。采集环境默认见 ADR-0008（团子版 + 对战记录对照）；插件字段语义仍以官方 HDT 为准（ADR-0007）。
 
 ## 结论：插件够不够用
 
-**对「继续打、继续记」够用，不必改插件、不必重编译。**
+**对「继续打、继续记」够用。** 请尽量用 **0.2.0**（修了匿名化误伤、局末压缩 `records`）；旧 DLL 也能记，但新数据质量更好。
 
 它已经稳定做到：
 
-- 官方 / 团子 HDT 均能加载（共用 `%APPDATA%\HearthstoneDeckTracker\Plugins`）；不卡顿；BattleTag 落盘前匿名化。
+- 官方 / 团子 HDT 均能加载（共用 `%APPDATA%\HearthstoneDeckTracker\Plugins`）；不卡顿；BattleTag 落盘前匿名化（0.2.0 起不再误改 JSON 里的 `Player` / `$type` 等）。
 - 每场战斗记下开战实体快照、HDT 交给模拟器的 Input、模拟 Output、战后快照、整局 Power 行。
 - 官方批与团子单局均验收通过；团子一局与对战记录阵容/五率 10/10 对齐（`facts/diag-tuanzi-compat-20261004.md`）。
 
-它**不是**正式采集器。下面这些等有开发环境再做，**现在不要为它们停手**：
+下列事项**不要为它们停手**（分析侧处理，或靠多打补样本）：
 
 - 实体快照仍拍在标签 `3533`，HDT 真正做模拟是约 80 行之后的 `2022`（本批数字仍一致）。
-- 新对局开头会倒出上一局残留 Input（分析时丢掉即可）。
+- 新对局开头会倒出上一局残留 Input（导入时丢掉即可）。
 - 双人 / 畸变 / 战斗中补录样本还很少——这靠多打，不靠改插件。
 
 ---
@@ -28,7 +28,7 @@
 
 | 拷什么 | 本机位置 |
 | --- | --- |
-| `HdtDiagLogger.dll`（约 43 KB） | `%APPDATA%\HearthstoneDeckTracker\Plugins\HdtDiagLogger.dll` |
+| `HdtDiagLogger.dll`（约 43–45 KB） | `%APPDATA%\HearthstoneDeckTracker\Plugins\HdtDiagLogger.dll` |
 | 本说明（可选） | 仓库 `docs/process/field-capture.md` |
 
 可选：同一目录下的 `salt.txt`。带上则两台机器上同一个人会映射成同一个 `player_xxxxxxxx`；不带则新机器自己生成一份盐，分析仍然可用，只是跨机器对不上同一个人。
@@ -44,7 +44,7 @@
 3. 把 `HdtDiagLogger.dll` 放到 `%APPDATA%\HearthstoneDeckTracker\Plugins\`（官方与团子共用此目录）。
 4. 若 DLL 来自网盘：右键 → 属性 → 「解除锁定」。
 5. 启动团子版 → 选项 → 插件 → 启用 **BG Helper Diagnostic Logger**。
-6. HDT 日志应有：`[BgHelperDiag] loaded 0.1.0; HDT=…, BobsBuddy=…`
+6. HDT 日志应有：`[BgHelperDiag] loaded 0.2.0; HDT=…, BobsBuddy=…`
 7. 团子对战记录目录（本机）：`C:\Program Files\HDT\对战记录\`，按日文件名如 `yyyy年MM月dd日.txt`。
 
 ### B. 备选：官方版
@@ -63,13 +63,13 @@
 
 | 文件 | 说明 |
 | --- | --- |
-| `meta.json` | 用记事本打开：`errors` 应为 `0`；`probeInitError` 应为 `null` 或空 |
-| `records.jsonl` | 大约 10–20 MB / 局 |
+| `meta.json` | 用记事本打开：`errors` 应为 `0`；`probeInitError` 应为 `null` 或空；`pluginVersion` 应为 `0.2.0` |
+| `records.jsonl.gz` | 0.2.0 局末压缩（约数 MB / 局）。若中途杀了 HDT，可能留下未压缩的 `records.jsonl`，也要保留 |
 | `power.log.gz` | 对局正常结束后才会出现。若中途杀了 HDT，会留下未压缩的 `power.log`，也要保留 |
 
 **优先补样本（遇到就打，不必刻意重开）：** 带任务、对手有奥秘、Malorne、场上有畸变、战斗中有「装填 / 手牌变化」一类效果。双人可以打，插件会记，但不保证覆盖。构造模式不用管，插件不会为它们建目录。
 
-**不要做：** 把 `records.jsonl` / 完整 Input 发到聊天或公开仓库；为「对手花费对不上」反复重打。
+**不要做：** 把 `records.jsonl[.gz]` / 完整 Input 发到聊天或公开仓库；为「对手花费对不上」反复重打。
 
 ---
 
@@ -98,7 +98,7 @@ HDT / Bob's Buddy 会更新。`meta.json` 会写下实际版本；**继续用、
 
 只有这些情况需要停下来联系（有开发环境后再处理）：
 
-- 插件列表里加载失败，或 HDT 日志里没有 `loaded 0.1.0`
+- 插件列表里加载失败，或 HDT 日志里没有 `loaded 0.2.0`
 - 每局 `meta.json` 的 `errors` 不是 0，或 `probeInitError` 有字，且你不确定是否还该继续打
 - （团子）对战记录与 diag 阵容/五率大面积对不上（不是个别 RNG 战果偏差）
 
@@ -106,4 +106,4 @@ HDT / Bob's Buddy 会更新。`meta.json` 会写下实际版本；**继续用、
 
 ## 隐私
 
-记录已做 BattleTag / 玩家名替换，但仍是个人对局数据，只放在本机或你自己的 U 盘 / 网盘。仓库里不放 `records.jsonl`、完整 Input JSON、BattleTag。对战记录文本一般不含 BattleTag，可进 `data/tuanzi/` 供对照（若日后含隐私字段再改规则）。
+记录已做 BattleTag / 玩家名替换，但仍是个人对局数据，只放在本机或你自己的 U 盘 / 网盘。仓库里不放 `records.jsonl[.gz]`、完整 Input JSON、BattleTag。对战记录文本一般不含 BattleTag，可进 `data/tuanzi/` 供对照（若日后含隐私字段再改规则）。

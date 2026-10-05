@@ -3,9 +3,13 @@ import json
 import os
 import sys
 
+from diag_io import iter_record_lines, records_path
+
 root = os.path.join(os.environ["APPDATA"], "HearthstoneDeckTracker", "BgHelperDiag")
 game = sys.argv[1] if len(sys.argv) > 1 else "20260926_082753_e07627"
-path = os.path.join(root, game, "records.jsonl")
+path = records_path(os.path.join(root, game))
+if not path:
+    raise SystemExit(f"no records.jsonl[.gz] under {root}/{game}")
 
 COUNTER_TAGS = {
     "2878", "4002", "2358", "3670", "3962", "4803", "4799", "2717", "3236",
@@ -56,8 +60,7 @@ def coll_summary(obj, depth=0):
 
 seen_turns = set()
 transfers = []
-with open(path, encoding="utf-8") as f:
-    for line in f:
+for line in iter_record_lines(os.path.join(root, game)):
         r = json.loads(line)
         t = r.get("type")
         if t == "entities" and r.get("reason") == "combat_start":
