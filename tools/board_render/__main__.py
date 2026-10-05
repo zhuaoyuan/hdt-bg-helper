@@ -11,7 +11,11 @@ from pathlib import Path
 from tools.standard_layer._paths import REPO
 from tools.standard_layer.combat import discover_games, iter_game_combats
 
+from .art import ArtStore
 from .board import compare_sides, side_from_combat, side_from_entities, side_from_input
+from .cards import CardStore
+from .chrome import ChromeStore
+from .render import compose_sides, render_side, save_png
 
 
 def default_roots() -> list[str]:
@@ -25,12 +29,15 @@ def resolve_game(roots: list[str], game_key: str) -> tuple[str, str]:
     games = discover_games(roots)
     if game_key in games:
         return game_key, games[game_key]
-    matches = [(k, v) for k, v in games.items() if k == game_key or k.endswith("_" + game_key) or k.endswith(game_key)]
+    matches = [
+        (k, v)
+        for k, v in games.items()
+        if k == game_key or k.endswith("_" + game_key) or k.endswith(game_key)
+    ]
     if len(matches) == 1:
         return matches[0]
     if not matches:
         raise SystemExit(f"game not found: {game_key} (searched {len(games)} under {roots})")
-    # Prefer exact suffix match like *_ed11e0
     suffix = [m for m in matches if m[0].endswith("_" + game_key)]
     if len(suffix) == 1:
         return suffix[0]
@@ -48,7 +55,9 @@ def run_check(game_dir: str, game_id: str, turn_filter: int | None) -> int:
         if turn_filter is not None and turn != turn_filter:
             continue
         for side in ("player", "opponent"):
-            ents = side_from_entities(c.get("entities") or [], c.get("context") or {}, side)  # type: ignore[arg-type]
+            ents = side_from_entities(
+                c.get("entities") or [], c.get("context") or {}, side  # type: ignore[arg-type]
+            )
             bb = side_from_input(c.get("input"), side)  # type: ignore[arg-type]
             if not ents.minions and not bb.minions:
                 skipped += 1
@@ -98,18 +107,96 @@ def run_check(game_dir: str, game_id: str, turn_filter: int | None) -> int:
     return 0
 
 
+def run_render(
+    game_dir: str,
+    game_id: str,
+    *,
+    side: str,
+    turn_filter: int | None,
+    out_dir: Path,
+    offline: bool,
+    chrome_dir: str | None,
+    compose: bool,
+) -> int:
+    art = ArtStore(offline=offline)
+    chrome = ChromeStore.open(chrome_dir)
+    cards = CardStore.open(offline=offline)
+    _meta, _records, combats = iter_game_combats(game_dir)
+
+    game_out = out_dir / game_id
+    game_out.mkdir(parents=True, exist_ok=True)
+
+    written: list[dict] = []
+    for c in combats:
+        turn = c.get("turn")
+        if turn_filter is not None and turn != turn_filter:
+            continue
+        combat_idx = int(c.get("combat") or 0)
+        turn_num = int(turn) if turn is not None else 0
+        sides = ("player", "opponent") if side == "both" else (side,)
+        images = {}
+        for s in sides:
+            board = side_from_combat(c, s)  # type: ignore[arg-type]
+            img = render_side(board, art=art, chrome=chrome, cards=cards)
+            name = f"T{turn_num:02d}_c{combat_idx}_{s}.png"
+            path = game_out / name
+            save_png(img, path)
+            images[s] = img
+            written.append(
+                {
+                    "file": str(path),
+                    "side": s,
+                    "turn": turn,
+                    "combat": combat_idx,
+                    "minions": len(board.minions),
+                    "source": board.source,
+                }
+            )
+        if compose and side == "both" and "player" in images and "opponent" in images:
+            stacked = compose_sides(images["player"], images["opponent"])
+            cpath = game_out / f"T{turn_num:02d}_c{combat_idx}_both.png"
+            save_png(stacked, cpath)
+            written.append(
+                {
+                    "file": str(cpath),
+                    "side": "both",
+                    "turn": turn,
+                    "combat": combat_idx,
+                    "composed": True,
+                }
+            )
+
+    summary = {
+        "gameId": game_id,
+        "out": str(game_out),
+        "files": len(written),
+        "missingPortraits": list(art.missing_ids),
+        "missingPortraitCount": len(art.missing_ids),
+        "chromeSource": chrome.source,
+        "chromeDir": str(chrome.chrome_dir) if chrome.chrome_dir else None,
+        "cardsSource": cards.source,
+        "offline": offline,
+        "written": written,
+    }
+    summary_path = game_out / "summary.json"
+    summary_path.write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(json.dumps({k: summary[k] for k in summary if k != "written"}, ensure_ascii=False, indent=2))
+    print(f"wrote {len(written)} png(s) + {summary_path}", file=sys.stderr)
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(
         description=(
             "P3-T6: render single-side battlegrounds board strips. "
-            "HDT Minion chrome PNGs are read locally only (never committed)."
+            "HDT Minion chrome PNGs are read locally only (personal use; never committed)."
         )
     )
     ap.add_argument("--root", action="append", default=None, help="BgHelperDiag root (repeatable)")
     ap.add_argument("--game", default=None, help="Game id or short suffix (e.g. ed11e0)")
     ap.add_argument("--side", choices=("player", "opponent", "both"), default="both")
     ap.add_argument("--turn", type=int, default=None, help="Only this turn number")
-    ap.add_argument("--out", default=str(REPO / "data" / "boards"), help="Output directory")
+    ap.add_argument("--out", default=str(REPO / "data" / "boards"), help="Output directory under data/")
     ap.add_argument("--offline", action="store_true", help="Do not download portraits / cards.json")
     ap.add_argument(
         "--chrome-dir",
@@ -120,7 +207,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument(
         "--compose",
         action="store_true",
-        help="When --side both, also write a stacked player/opponent PNG (convenience)",
+        help="When --side both, also write a stacked opponent/player PNG (convenience)",
     )
     args = ap.parse_args(argv)
 
@@ -132,26 +219,20 @@ def main(argv: list[str] | None = None) -> int:
         gid, gdir = resolve_game(roots, args.game)
         return run_check(gdir, gid, args.turn)
 
-    # Render path is filled in T6.3; keep a clear message until then.
     if not args.game:
         ap.error("--game is required (or use --check)")
-    print(
-        "render not implemented yet (T6.3). Use --check for extraction validation.",
-        file=sys.stderr,
-    )
-    # Touch side_from_combat so the import stays live for early callers.
+
     gid, gdir = resolve_game(roots, args.game)
-    _meta, _records, combats = iter_game_combats(gdir)
-    n = 0
-    for c in combats:
-        if args.turn is not None and c.get("turn") != args.turn:
-            continue
-        sides = ("player", "opponent") if args.side == "both" else (args.side,)
-        for s in sides:
-            board = side_from_combat(c, s)  # type: ignore[arg-type]
-            n += len(board.minions)
-    print(f"dry-run {gid}: {n} minions extracted (no PNG yet)", file=sys.stderr)
-    return 0
+    return run_render(
+        gdir,
+        gid,
+        side=args.side,
+        turn_filter=args.turn,
+        out_dir=Path(args.out),
+        offline=args.offline,
+        chrome_dir=args.chrome_dir,
+        compose=args.compose,
+    )
 
 
 if __name__ == "__main__":
