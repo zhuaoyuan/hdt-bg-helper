@@ -7,6 +7,7 @@
 
 ## 最近完成
 
+- **插件 0.2.0 首局验收**（2026-10-05）：`20261005_104908_ed11e0`（伊利丹，第 5 名，12 回合）。`pluginVersion=0.2.0`，`records.jsonl.gz` 已压；ready **12/12**、团子对照 **12/12**、重放 3σ **12/12**。匿名化未误伤 `$type`/`Player`/`Windfury`/`ControlledByPlayer`。团子配对样本 **6/10**。见 [`worklog/2026-10-05-plugin-020-first-game.md`](worklog/2026-10-05-plugin-020-first-game.md)。
 - **P2-T3 离线导入与质量报告**（2026-10-05）：`tools/standard_layer` 产出每回合 JSONL + 质量报告；战果来源 `tuanzi`/`hdt`/`lb`；可选 `--replay`。本机 52 局 609 回合 ready **99.0%**；团子配对 5 局 ready **93.1%**、对照 **54/54**、重放 3σ **54/54**。见 [`facts/standard-layer-import.md`](facts/standard-layer-import.md)、[`worklog/2026-10-05-p2t3-standard-layer.md`](worklog/2026-10-05-p2t3-standard-layer.md)。分支 `feat/P2-T3-offline-import`。
 - **P2-T2 诊断插件转正**（2026-10-05）：`HdtDiagLogger` **0.2.0**——匿名化词边界 + BB 结构保留名；局末 `records.jsonl.gz`；`tools/diag_io.py`。见 [`design/P2-data-capture.md`](design/P2-data-capture.md) §8、[`worklog/2026-10-05-p2t2-diag-plugin.md`](worklog/2026-10-05-p2t2-diag-plugin.md)。
 - **P2-T1 短方案 + ADR**（2026-10-05）：[`design/P2-data-capture.md`](design/P2-data-capture.md) approved；ADR-0004 / ADR-0010 accepted。
@@ -19,7 +20,7 @@
 ## 下一步（按优先级）
 
 1. **agent：P3-T0 核心假设早期验证**（依赖 P2-T0✓、P2-T3✓）：用 `data/standard/turns.jsonl` 的 `ready` 行；建议先用 BB 1.85.0 队列做全交叉模拟，再扩到全量。
-2. **所有者：** 关 HDT 后部署插件 **0.2.0**（若尚未）；按 [`process/field-capture.md`](process/field-capture.md) 用团子版继续采集，把 `BgHelperDiag/<id>` + 当日对战记录带回 `data/`，凑满**连续 10 局**团子配对以正式满足 P2 退出标准。合并/验收分支：`feat/P2-T2-diag-plugin-patches`、`feat/P2-T3-offline-import`。
+2. **所有者：** 继续按 [`process/field-capture.md`](process/field-capture.md) 用团子版 + **0.2.0** 采集，把新局 `BgHelperDiag/<id>` + 当日对战记录带回；再凑 **4** 局配对即可满连续 10 局以正式满足 P2 退出标准。合并/验收分支：`feat/P2-T2-diag-plugin-patches`、`feat/P2-T3-offline-import`。
 
 ## 待决事项默认值（所有者未否决即按此执行）
 

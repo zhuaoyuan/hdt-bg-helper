@@ -4,11 +4,11 @@
 
 ```text
 工具：python -m tools.standard_layer
-样本：data/BgHelperDiag（49）+ %APPDATA%/.../BgHelperDiag（6 去重后共 52 局）/ 609 回合
-团子：data/tuanzi/2026年10月04日.txt、2026年10月05日.txt（配对 5 局）
-重放：spikes/replay-harness，BB 1.85.0.0，配对 5 局 ready 回合
-最后核实：2026-10-05
-证据：docs/worklog/2026-10-05-p2t3-standard-layer.md；本地 data/standard/（不入库）
+样本：data/BgHelperDiag（49）+ %APPDATA%/.../BgHelperDiag（含 0.2.0 局 ed11e0；去重后此前 52 局）/ 609+12 回合
+团子：data/tuanzi/2026年10月04日.txt、2026年10月05日.txt（配对 **6** 局）
+重放：spikes/replay-harness，BB 1.85.0.0
+最后核实：2026-10-05（含 0.2.0 首局验收）
+证据：docs/worklog/2026-10-05-p2t3-standard-layer.md；docs/worklog/2026-10-05-plugin-020-first-game.md
 ```
 
 ## 1. 结论
@@ -22,7 +22,17 @@
 | 同版本 BB 重放 3σ（配对 ready） | **54/54** |
 | 战果来源（全量） | `hdt` 548 / `tuanzi` 47 / `lb` 14 |
 
-连续满 **10** 局带团子文本的样本尚未凑齐；工具与配对局上的退出数字已满足，待所有者继续采集补到 10 局。
+连续满 **10** 局带团子文本的样本尚未凑齐（当前 **6**，含 0.2.0 首局）；工具与配对局上的退出数字已满足，待所有者继续采集补到 10 局。
+
+### 1.1 插件 0.2.0 首局（2026-10-05）
+
+| 项 | 结果 |
+| --- | --- |
+| 局 id | `20261005_104908_ed11e0` |
+| `pluginVersion` / 压缩 | **0.2.0** / `records.jsonl.gz`+`power.log.gz` |
+| ready / 团子对照 / 重放 3σ | **12/12** / **12/12** / **12/12** |
+| 命令 | `python -m tools.standard_layer --out data\standard_ed11e0 --game ed11e0 --replay` |
+| 证据 | [`worklog/2026-10-05-plugin-020-first-game.md`](../worklog/2026-10-05-plugin-020-first-game.md) |
 
 ## 2. 命令
 
