@@ -36,6 +36,7 @@
 | [`diag-capture-batch-20261003.md`](diag-capture-batch-20261003.md) | 后续 48 局批评估（09-27~10-03）：跨 HDT/BB 版本完整度、覆盖缺口、匿名化腐蚀 |
 | [`diag-tuanzi-compat-20261004.md`](diag-tuanzi-compat-20261004.md) | 团子版 HDT 一局 diag 与官方结构兼容；与团子对战记录交叉验证（2026-10-04） |
 | [`diag-disconnect-completeness-20261005.md`](diag-disconnect-completeness-20261005.md) | 拔线场次下 diag 完整性：直接拔线缺 Combat；「不知结果」仍可有 BB Input/Output（2026-10-05） |
+| [`combat-result-reconstruction.md`](combat-result-reconstruction.md) | 每场实际战果的还原：HDT invoker 字段 + 排行榜血量差；拔线/重连回合的处理与准确率（Q-014，2026-10-05） |
 | [`bobsbuddy-minion-enchantments.md`](bobsbuddy-minion-enchantments.md) | 随从附着附魔 → BB `Minion` 字段映射全表（上一份的附表） |
 | [`local-environment.md`](local-environment.md) | 所有者本机实际运行的 HDT 版本、数据目录、可用工具 |
 | [`bobsbuddy-public-api.md`](bobsbuddy-public-api.md) | `BobsBuddy.dll` 公开 API、独立调用实测、版本差异 |

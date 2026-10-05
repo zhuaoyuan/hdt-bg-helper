@@ -7,6 +7,7 @@
 
 ## 最近完成
 
+- **Q-014 关闭：拔线回合战果可还原**（2026-10-05）：HDT invoker 转储的 `LastAttackingHero` + 排行榜英雄有效血量差（重连回合取 `FULL_ENTITY` 重发后）。团子有战果 47 回合 47/47；拔线 9 回合全部还原，与 BB 高置信预测 7/7 一致。仅"幽灵对手 + 拔线"只能判非负。见 [`facts/combat-result-reconstruction.md`](facts/combat-result-reconstruction.md)、[`worklog/2026-10-05-q014-result-reconstruction.md`](worklog/2026-10-05-q014-result-reconstruction.md)。
 - **P2 范围重估**（2026-10-05，所有者确认）：P2 由 8 项压到 4 项——T0 重放+往返验证；T1 短方案+ADR；T2 诊断插件转正；T3 离线导入与质量报告（含团子配对、拔线战果还原）。roadmap 已改。另：所有者会继续拔线 → [ADR-0009](decisions/0009-allow-disconnect-reconstruct-results.md)（取代 ADR-0008 第 4 条），还原方法待验证（Q-014）。见 [`worklog/2026-10-05-p2-rescope.md`](worklog/2026-10-05-p2-rescope.md)。
 - **10.5 拔线场次 diag 完整性**（2026-10-05）：团子当日对照 BgHelperDiag。无拔线局 `6ab052` 10/10；`c88ca9` 10/11；最新德雷阿佳丝局 `20ad61` **11/12**（仅 T10「直接拔线」缺 Combat；T6–T9/T11「不知结果」阵容+BB 仍在）。泽瑞拉局仅中途启用残局 `bdd811`。见 [`facts/diag-disconnect-completeness-20261005.md`](facts/diag-disconnect-completeness-20261005.md)、[`worklog/2026-10-05-disconnect-diag-completeness.md`](worklog/2026-10-05-disconnect-diag-completeness.md)。
 - **HDT 无响应排查搁置**（2026-10-05）：重启电脑后，无论是否启用 `HdtDiagLogger` 均未再出现未响应。前一日证据指向 HearthMirror Cross-thread Hang、很大概率非本插件；现无法稳定复现，**排查暂停**。若再出现再开。见 [`worklog/2026-10-04-hdt-hang-triage.md`](worklog/2026-10-04-hdt-hang-triage.md)。
@@ -27,7 +28,7 @@
 ## 下一步（按优先级）
 
 1. **agent：P2-T0 离线重放与往返验证。** 先写短方案（`design/P2-replay-harness.md`），再实现：诊断记录 `_input` 转储 → BB `Input` → 独立进程模拟 → 与记录 `Output` 对照。必须按 `meta` 的 BB 版本选 DLL；过滤残留 invoker；修复被匿名化改名的 `Player` 键。之后顺带做 Q-009 / Q-011 / Q-013 实验。
-2. **agent：P2-T3 离线导入（可与 T0 并行）。** 先把 `eval_tuanzi_crosscheck.py` 扩成多局批量配对（按日期 + 英雄 CardId + 阵容多重集），产出每回合一行的表；再做 Q-014 拔线战果还原，并在有团子战果的回合上测准确率。
+2. **agent：P2-T3 离线导入（可与 T0 并行）。** 产出每回合一行的表。团子配对可直接复用 `eval_q014_reconstruct.py` 的方法（日期 + invoker 中文英雄名 + 每回合对手名，5/5 局对上）；战果按 `facts/combat-result-reconstruction.md` 第 4 节的顺序取并标注来源（`tuanzi` / `hdt` / `lb` / `unknown`）。
 3. **agent：P2-T2 插件补丁**：匿名化加词边界，避免再腐蚀 `Player` / `$type`；`records.jsonl` 局末压缩。
 4. **agent：P2-T1 短方案 + ADR**：诊断记录目录即原始层；"HDT `_input` 为主数据源"的 ADR；细化 ADR-0004 后请所有者确认。
 5. **agent：P3-T0 核心假设早期验证**（依赖 P2-T0、P2-T3）：建议先用 BB 1.85.0 队列（~16 局）做全交叉模拟，再扩到全量。
