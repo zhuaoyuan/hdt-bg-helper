@@ -57,6 +57,14 @@ python ..\tools\check_capture.py --root out\fake_root --hs-logs none
 
 2026-09-25 结果（BB 1.78.1）：7 对 7 白板的 `Input` 共 210 个节点、约 37 KB JSON，首次序列化 12–22 ms（含 JIT 和反射缓存），之后约 1 ms；两次序列化结果一致，模拟前后 `Input` 的序列化结果也一致；`Output` 约 23 KB（含每次模拟的伤害结果）。唯一被跳过的类型是每个随从引用的 `Simulator`。匿名化和写入器检查通过。`out/` 里是从闭源 DLL 派生的输出，不入库。
 
+## 战果还原评估（Q-014）
+
+```powershell
+python spikes\hdt-diag-logger\tools\eval_q014_reconstruct.py [--csv out\results.csv]
+```
+
+默认读取 `data/BgHelperDiag` 和 `%APPDATA%\HearthstoneDeckTracker\BgHelperDiag`，与 `data/tuanzi/` 的团子文本自动配对，输出每场战斗的 HDT 判定、排行榜血量差分和准确率统计。`power_replay.py` 是它用到的 Power.log 标签重放器。结论见 [`docs/facts/combat-result-reconstruction.md`](../../docs/facts/combat-result-reconstruction.md)。
+
 ## 已知限制
 
 - 只保证单人模式；双人模式照常记录，检查脚本不区分队友。
