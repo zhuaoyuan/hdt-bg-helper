@@ -1,9 +1,9 @@
 # 方案：战力分位引擎（参照池、放宽、抽样、缓存、置信区间）
 
-- **状态：** approved（所有者 2026-10-05 确认 ADR-0011 三点与退出标准修订；下一步跑校准 E1–E3 填 §3.9）
+- **状态：** approved（所有者 2026-10-05 确认 ADR-0011；**2026-10-05 校准 E1–E5 已跑完，§3.9 已填实测值**，见 `facts/strength-calibration.md`）
 - **任务：** P3-T1（同时给出 P3-T2 / P3-T3 的实现边界）
 - **作者 / 日期：** agent / 2026-10-05
-- **相关：** ADR-0003、ADR-0004、ADR-0010、[ADR-0011](../decisions/0011-strength-pool-round-robin.md)（accepted）；`facts/strength-cross-p3t0.md`、`facts/replay-roundtrip.md`、`facts/standard-layer-import.md`、`facts/combat-result-reconstruction.md`；Q-008、Q-011、Q-015、Q-016
+- **相关：** ADR-0003、ADR-0004、ADR-0010、[ADR-0011](../decisions/0011-strength-pool-round-robin.md)（accepted）；`facts/strength-cross-p3t0.md`、`facts/strength-calibration.md`、`facts/replay-roundtrip.md`、`facts/standard-layer-import.md`、`facts/combat-result-reconstruction.md`；Q-008、Q-011、Q-015、Q-016
 
 ## 1. 目标与非目标
 
@@ -39,8 +39,8 @@
 
 **依赖的未决问题：**
 
-- **Q-015（迭代次数）**：本方案先假设 4000 次。如果 E1 证明 1000 次就够，默认值就改为 1000，成本约降到 1/4，§3.5 的面板上限也可以放宽。
-- **Q-016（新版本冷启动，新增）**：假设新 BB 版本前几天只能显示"样本不足"。如果 E5 证明跨版本参照偏差小，就启用 L2 放宽。
+- **Q-015（迭代次数）**：**已关闭** — 默认 **500**（E1；见 `facts/strength-calibration.md`）。
+- **Q-016（新版本冷启动）**：**已关闭** — L2 **保持关闭**（E5 \|ΔQ\| p95≈13.6 >5）。
 
 ## 3. 方案
 
@@ -143,16 +143,18 @@ SQLite 文件 `data/strength/cache.sqlite`（gitignore），只追加。
 | E4 | 用反对称省一半成本 | 已有数据：差值 >0.05 的对占 2.8% | **本方案不采用。** 只在两局可用种族与伤害上限都相同时才可能放开，留作以后的优化 |
 | E5（Q-016，可选） | 跨版本参照偏差 | 把 1.81.2 的场面当参照，用 1.85.0 的 DLL 给 1.85 候选打分，与纯 1.85 的 \(Q\) 对比 | \|Δ\| p95 ≤5 个百分位点才允许启用 L2 |
 
-### 3.9 默认参数表（E1–E5 跑完后填实测值）
+### 3.9 默认参数表（E1–E5 实测，2026-10-05）
+
+证据：[`facts/strength-calibration.md`](../facts/strength-calibration.md)。
 
 | 参数 | 起步值 | 校准后 |
 | --- | --- | --- |
-| `iterations` | 4000 | 待 E1 |
-| `maxDurationMs` | 4000 | 随 E1 调整 |
-| `panelGames` K | 不设上限 | 待 E2 |
-| \(G_\text{min}\) | 8 | 待 E3 |
-| \(w_\text{relax}\) / 是否启用 L1 | 0.5 / 启用 | 待 E3 |
-| L2 跨版本 | 关闭 | 待 E5 |
+| `iterations` | 4000 | **500** |
+| `maxDurationMs` | 4000 | **500** |
+| `panelGames` K | 不设上限 | **30**（本批 24 局下 ≡ 全面板；K=20 未过 p95≤3） |
+| \(G_\text{min}\) | 8 | **6** |
+| \(w_\text{relax}\) / 是否启用 L1 | 0.5 / 启用 | **0.25 / 启用** |
+| L2 跨版本 | 关闭 | **关闭**（E5 \|ΔQ\| p95≈13.6 >5） |
 | bootstrap B | 1000 | — |
 | 参照含对手场面 | 是（可关） | — |
 
@@ -222,7 +224,7 @@ flowchart LR
 ## 7. 任务拆分
 
 1. ~~本方案 + ADR-0011~~ — 已 approved / accepted（2026-10-05）。
-2. **校准实验 E1–E3（E5 可选）**（下一步）：扩展 `spikes/strength-cross`，增加 `--iterations-sweep`、面板截断、降采样分析，并写 `facts/strength-calibration.md`，填完 §3.9。
+2. ~~**校准实验 E1–E3（E5 可选）**~~ — 2026-10-05 完成：`spikes/strength-cross/tools/calibrate.py`；`facts/strength-calibration.md`；§3.9 已填。
 3. **P3-T2**：`tools/ReplaySim` 迁移；`tools/strength/` 的入池、面板、缓存、增量批跑，附单元测试。
 4. **P3-T3**：循环赛 \(S/Q\)、聚类 bootstrap、放宽阶梯与标签、`strength.jsonl`、退出统计脚本。
 5. P3-T4 / P3-T5 不变。

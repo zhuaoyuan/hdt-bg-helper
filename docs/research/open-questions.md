@@ -11,14 +11,14 @@
 | 编号 | 问题 | 影响 | 验证方式 | 关联 | 状态 |
 | --- | --- | --- | --- | --- | --- |
 | Q-002 | 能否通过反射读取 HDT 内部 `BobsBuddyInvoker._input`，作为对照基准或数据源？稳定性如何？ | 中 | **已跨 4 个 HDT / BB 小版本继续成功**（2026-10-04 批：HDT 1.58.3→1.58.6，BB 1.78.1→1.85.0，537/539 场完整 Input+Output，`probeInitError` 全空）。P2-T1 已采纳为**主数据源**（ADR-0010）；残留 invoker、匿名化误伤见 `facts/diag-capture-batch-20261003.md`。字段级改名：1.85.0 新增 `DiscardCounter`。仍 investigating：大版本/反射成员改名时再测（升级冒烟：`check_capture` + roundtrip） | ADR-0010、`spikes/hdt-diag-logger/` | investigating |
-| Q-008 | 个人对局数据量能否支撑按"同补丁 + 同回合 + 同规则"筛选的参照池？需要多少局？ | 高 | 估算见 `research/q008-personal-data-volume.md`。**P3-T0 实测（2026-10-05）**：同 BB 1.85 + 同回合、约 23 局己方场面时，分位 bootstrap 宽中位 ≈14 百分位点（84%≤20）；加对手场面更稳。严格再按种族/畸变分桶仍不可行。P3-T1：默认同版本+同回合，不足时先加对手场面再 turn±1 | P3、`facts/strength-cross-p3t0.md` | investigating |
-| Q-015 | 场面对场面交叉时，目标蒙特卡洛迭代次数可降到多少，仍保留对 \(S(x)\)/分位/胜负排序有用的质量，并最大限度省时？ | 中 | 以 P3-T0 的 4000 次（及 `maxDuration`）为基线，在同一批交叉对上扫迭代档位（如 500/1000/2000/4000），对照：五率相对基线的误差、\(S\)/分位秩相关与绝对偏差、bootstrap 宽、墙钟。作为 P3-T1「抽样与加权」的候选路径之一（与参照场面抽样并列），结论写入设计方案默认值。**已排入 P3-T1 方案校准实验 E1**（档位 250/500/1000/2000，4000 为基线，300 对 20000 次作真值；判据见方案 §3.8） | P3-T1、`facts/strength-cross-p3t0.md`、`design/P3-T1-strength-engine.md` | open |
-| Q-016 | 新 BB 版本发布后同版本参照池为空（冷启动）：能否把上一版本的场面当参照、用**当前**版本 DLL 重新模拟？分位偏差多大？ | 中 | P3-T1 方案校准实验 E5：1.81.2 场面作参照、用 1.85.0 DLL 给 1.85 候选打分，与纯 1.85 分位比较；\|ΔQ\| p95 ≤5 个百分位点才启用放宽级别 L2。风险：新字段（如 1.85 的 `DiscardCounter`）缺省、机制变化（Q-011：40 场中 3 场显著偏） | P3-T1、ADR-0011、Q-011 | open |
+| Q-008 | 个人对局数据量能否支撑按"同补丁 + 同回合 + 同规则"筛选的参照池？需要多少局？ | 高 | 估算见 `research/q008-personal-data-volume.md`。**P3-T0 实测**：约 23 局时 bootstrap（场面重采样）中位宽 ≈12–14。**P3-T1 校准**：\(G_\text{min}=6\)；聚类 bootstrap 中位宽本批≈36 点（离散分位主导，见 `facts/strength-calibration.md`）。严格再按种族/畸变分桶仍不可行 | P3、`facts/strength-cross-p3t0.md`、`facts/strength-calibration.md` | investigating |
 
 ## 已关闭
 
 | 编号 | 问题 | 结论 | 结论位置 |
 | --- | --- | --- | --- |
+| Q-015 | 交叉模拟迭代次数可降到多少？ | **默认 500。** E1：相对 4000 基线，500 满足 \|ΔQ\| p95≤3、Spearman(S)≥0.99、bootstrap 宽不增；250 未过。300 对 @20000 显示 4000 已贴近真值（2026-10-05） | `facts/strength-calibration.md`、`design/P3-T1-strength-engine.md` §3.9 |
+| Q-016 | 新 BB 版本冷启动能否用上一版本场面作参照（当前 DLL 重模拟）？ | **不能启用 L2。** E5：1.81.2 参照给 1.85 候选打分，\|ΔQ\| p95≈13.6 >5；与 Q-011 跨版本偏差一致。冷启动显示 `insufficient`（2026-10-05） | `facts/strength-calibration.md`、ADR-0011 |
 | Q-009 | 单场模拟 1.5–5 秒、占半数核心；P3 批量模拟的总耗时是否可接受？ | **可接受（按默认标准）。** 真实场面独立进程模拟 `elapsedMs` 中位 411 ms（261 场，max 1046 ms）；每局全部回合模拟合计 max ≈8 s，远低于「每局 ≤ 10 分钟」。一场一进程墙钟中位 ≈1.6 s/场，仍无局超预算（2026-10-05） | `facts/replay-roundtrip.md` §2 |
 | Q-011 | 离线批量模拟该用哪个版本的 `BobsBuddy.dll`？与采集时不一致会偏多少？ | **必须用采集时同版本。** 1.78.1 场面用 1.85.0 重跑：40 场中 3 场五率显著偏（Δwin 最高约 0.23）。默认策略不变；缺 DLL 的版本跳过重放（2026-10-05） | `facts/replay-roundtrip.md` §3 |
 | Q-013 | HDT 从未赋值的 BB 公开字段开战时是否影响模拟结果？ | **对本批测的六个 Player 计数器：不影响。** 30 场将双方 `DeepBluesCounter`/`AnySpellCounter`/`BackToBackCounter` 设为 7 后五率均无显著变化。不要求单独采集这些字段；随从侧未赋值成员未全测（2026-10-05） | `facts/replay-roundtrip.md` §4 |
