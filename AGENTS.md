@@ -61,4 +61,10 @@
 - HDT 目标框架：`net472`、`x64`、C# 10。插件需与之匹配（见 `docs/facts/hdt-baseline.md`）。
 - 本项目目录的上级 `C:\projects\github` 本身也是一个（无提交的）git 仓库，本项目有自己独立的 git 仓库，注意 git 命令的工作目录。
 - `dotnet` 不在 PATH 上，用完整路径 `& "C:\Program Files\dotnet\dotnet.exe"`（SDK 8.0.417 / 9.0.200）。没有 `msbuild`、`gh`；查 GitHub 用 `Invoke-RestMethod https://api.github.com/...`（未认证，每小时 60 次）。
+- **访问 GitHub / HTTPS 失败时**（如 `Connection was reset`、`Could not connect to github.com:443`、SSH `Permission denied` 且无法换通道）：本机可开代理后再试。当前会话 PowerShell：
+  ```powershell
+  $Env:https_proxy = "http://127.0.0.1:1081"
+  $Env:http_proxy  = "http://127.0.0.1:1081"
+  ```
+  仅影响该 Shell；代理需已在 `127.0.0.1:1081` 监听。`git push` 走 HTTPS 时通常会读这些变量。
 - 本机环境详情（HDT 安装位置、数据目录等）见 `docs/facts/local-environment.md`。
