@@ -4,11 +4,11 @@
 
 ```text
 工具：python -m tools.standard_layer
-样本：data/BgHelperDiag（49）+ %APPDATA%/.../BgHelperDiag（含 0.2.0 局 ed11e0；去重后此前 52 局）/ 609+12 回合
-团子：data/tuanzi/2026年10月04日.txt、2026年10月05日.txt（配对 **6** 局）
+样本：团子配对 7 局（含 0.2.0 的 ed11e0、e1f536）；历史全量约 52+ 局
+团子：data/tuanzi/2026年10月04日.txt、2026年10月05日.txt
 重放：spikes/replay-harness，BB 1.85.0.0
-最后核实：2026-10-05（含 0.2.0 首局验收）
-证据：docs/worklog/2026-10-05-p2t3-standard-layer.md；docs/worklog/2026-10-05-plugin-020-first-game.md
+最后核实：2026-10-05（P2 提前退出）
+证据：docs/worklog/2026-10-05-p2t3-standard-layer.md；docs/worklog/2026-10-05-p2-early-exit.md
 ```
 
 ## 1. 结论
@@ -16,29 +16,26 @@
 | 项 | 结果 |
 | --- | --- |
 | 标准层介质 | JSONL：每回合一行（`gameId`/`turn`/`inputRef`/`output`/`result`/`resultSource`/`status`/…） |
-| 全量 ready（非 direct_dc） | **601/607 = 99.0%**（8 回合 `missing`，多为无 Combat Output） |
-| 团子配对 5 局 ready（非 direct_dc） | **54/58 = 93.1%** ≥ 90% |
-| ready ∩ 团子阵容+五率+次数 | **54/54 = 100%** |
-| 同版本 BB 重放 3σ（配对 ready） | **54/54** |
-| 战果来源（全量） | `hdt` 548 / `tuanzi` 47 / `lb` 14 |
+| 全量 ready（非 direct_dc，历史 52 局） | **601/607 = 99.0%** |
+| 团子配对 **7** 局 ready（非 direct_dc） | **78/82 = 95.1%** ≥ 90% |
+| ready ∩ 团子阵容+五率+次数 | **78/78 = 100%** |
+| 同版本 BB 重放 3σ（配对 ready） | **78/78** |
+| P2 退出 | **已关闭**（所有者 2026-10-05 接受 7 局样本提前结束；字面 10 局未凑满） |
 
-连续满 **10** 局带团子文本的样本尚未凑齐（当前 **6**，含 0.2.0 首局）；工具与配对局上的退出数字已满足，待所有者继续采集补到 10 局。
+### 1.1 插件 0.2.0 两局（2026-10-05）
 
-### 1.1 插件 0.2.0 首局（2026-10-05）
+| 局 id | 英雄 / 名次 | ready / 对照 / 重放 |
+| --- | --- | --- |
+| `20261005_104908_ed11e0` | 伊利丹 / 5 | 12/12 / 12/12 / 12/12 |
+| `20261005_111748_e1f536` | 托里姆 / 3 | 12/12 / 12/12 / 12/12 |
 
-| 项 | 结果 |
-| --- | --- |
-| 局 id | `20261005_104908_ed11e0` |
-| `pluginVersion` / 压缩 | **0.2.0** / `records.jsonl.gz`+`power.log.gz` |
-| ready / 团子对照 / 重放 3σ | **12/12** / **12/12** / **12/12** |
-| 命令 | `python -m tools.standard_layer --out data\standard_ed11e0 --game ed11e0 --replay` |
-| 证据 | [`worklog/2026-10-05-plugin-020-first-game.md`](../worklog/2026-10-05-plugin-020-first-game.md) |
+命令：`python -m tools.standard_layer --out data\standard_paired7 --game 62725a --game 3a513e --game 6ab052 --game c88ca9 --game 20ad61 --game ed11e0 --game e1f536 --replay`
 
 ## 2. 命令
 
 ```powershell
 python -m tools.standard_layer --out data\standard
-python -m tools.standard_layer --out data\standard_replay_sample --game 62725a --game 3a513e --game 6ab052 --game c88ca9 --game 20ad61 --replay
+python -m tools.standard_layer --out data\standard_paired7 --game 62725a --game 3a513e --game 6ab052 --game c88ca9 --game 20ad61 --game ed11e0 --game e1f536 --replay
 python -m unittest discover -s tools\standard_layer -p "test_*.py" -v
 ```
 
