@@ -2,7 +2,7 @@
 
 > 这份文档回答：系统由哪些部分组成、数据怎么流动、代码打算怎么组织。内容要和已接受的 ADR 保持一致。
 
-**最后更新：** 2026-10-05（P2-T1：原始层=diag 目录；`_input` 为主数据源）
+**最后更新：** 2026-10-05（P2-T3：标准层导入 CLI 落地）
 
 ## 1. 组件与数据流
 
@@ -48,7 +48,7 @@ flowchart LR
 | --- | --- | --- | --- |
 | 采集插件 | 沿用 `HdtDiagLogger`：局内只读、只写本地 diag 目录；不跑模拟、不算分位 | P2 | ADR-0004、ADR-0010 |
 | 原始层 | `BgHelperDiag/<id>/`：`meta.json`、`records.jsonl[.gz]`、`power.log.gz` | P2 | ADR-0004、`design/P2-data-capture.md` |
-| 标准层 | 离线导入：每回合一行（Input/Output 引用、战果来源、完整性） | P2-T3 | ADR-0004、ADR-0008、ADR-0009 |
+| 标准层 | 离线导入：每回合一行（Input/Output 引用、战果来源、完整性）→ `tools/standard_layer`，输出 JSONL | P2-T3✓ | ADR-0004、ADR-0008、ADR-0009 |
 | 主模拟输入 | 直接使用转储的 HDT `_input`；实体快照仅后备，P2 不实现 InputBuilder | P2+ | ADR-0010 |
 | 模拟 / 重放 | 按 `meta` BB 版本在独立进程调用本机 `BobsBuddy.dll` | P2-T0+ | ADR-0002、ADR-0006 |
 | 质量检查 | 完整率、团子对照、重放偏差、升级冒烟 | P2-T3 | — |
@@ -68,10 +68,11 @@ flowchart LR
 
 ```text
 spikes/
-  hdt-diag-logger/        # 采集插件（P2-T2 转正前仍可住在 spikes）
+  hdt-diag-logger/        # 采集插件（P2-T2 已转正语义，代码仍可住在 spikes）
   replay-harness/         # 离线重放（P2-T0）
-src/                      # 正式代码：待 T2/T3 需要时再落（可先 tools/）
-tools/                    # 离线导入、质量报告等 CLI
+tools/
+  standard_layer/         # P2-T3 离线导入 + 质量报告
+src/                      # 正式代码：后续引擎可迁入
 tests/
 analysis/                 # 离线分析（语言待定）
 ```

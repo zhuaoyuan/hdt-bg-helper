@@ -153,7 +153,7 @@ P2-T1 本身是文档任务，验收：
 | --- | --- | --- |
 | T1a | 本方案 + ADR-0004 细化 + ADR-0010 | 完成（2026-10-05） |
 | T2 | 插件：匿名化词边界 + 局末压缩 | 完成（2026-10-05，插件 0.2.0） |
-| T3 | 离线导入 + 质量报告 | 待做（可与 T2 并行） |
+| T3 | 离线导入 + 质量报告 | 完成（2026-10-05） |
 
 ## 8. 实现记录
 
@@ -163,3 +163,12 @@ P2-T1 本身是文档任务，验收：
 - `RecordWriter` 局末将 `records.jsonl` 压成 `records.jsonl.gz`（与 `power.log.gz` 相同；HDT 中途退出可能留下未压缩文件）。
 - 工具侧新增 `tools/diag_io.py`，`check_capture` / 各 eval / `replay-harness/roundtrip.py` 同时认 `.jsonl` 与 `.jsonl.gz`。
 - 未做（按方案可选）：`2717` 补录、`hearthstoneBuild` 推迟写入；残留 invoker / `2022=0` 选取仍在 T3。
+
+### P2-T3（2026-10-05）
+
+- 正式 CLI：`python -m tools.standard_layer`（见 `tools/README.md`）。输出 `data/standard/turns.jsonl` + `quality_report.{json,txt}`（`data/` 不入库）。
+- 选取：`combat_phase` 分段内、`2022=0` 之后、`state=Combat` 且有 Input/Output 的 `hdt_bb`（最高 `reRunCount`）；匿名化键修复与 replay-harness 一致。
+- 战果：团子实际结果 → HDT `LastAttackingHero`（无重连）→ 排行榜有效血量差；`resultSource` = `tuanzi` / `hdt` / `lb` / `unknown`。
+- 完整性：`ready` = 单人 + 有 Combat Input/Output + 非中途启用；系统性清单盲区（未知手牌、Input 中 `2717` 恒 0）记入 `gapFlags` **不**单独降为 `partial`（否则 ready 远低于退出线，且转储仍是 HDT 当场模拟输入）。`direct_dc` / 无 Output → `missing`。
+- 团子阵容对照：接受 Max\* 或 Base\* 攻血多重集（团子文案常印 BaseHealth）。
+- 本机验证（2026-10-05）：全量 52 局 609 回合 ready 601/607（非 direct_dc）= **99.0%**；有团子配对的 5 局 54/58 = **93.1%**；ready∩团子适用回合阵容+五率 **54/54**；同版本 BB 重放 3σ **54/54**。连续满 10 局团子配对样本仍不足，退出标准第 1 条按已有配对局与全量 ready 率记为工具侧达标、样本待补。

@@ -24,9 +24,15 @@ PLAYER_RE = re.compile(r"^Player EntityID=(\d+) PlayerID=(\d+)")
 
 def read_power(game_dir: str) -> list[tuple[int, str]]:
     """Return [(lineSeq, payload)] where payload is the text after 'DebugPrintPower() - ' (stripped)."""
-    path = os.path.join(game_dir, "power.log.gz")
+    from diag_io import open_text, power_path
+
+    path = power_path(game_dir)
+    if not path:
+        path = os.path.join(game_dir, "power.log.gz")
+        if not os.path.exists(path):
+            return []
     out = []
-    with gzip.open(path, "rt", encoding="utf-8", errors="replace") as f:
+    with open_text(path) as f:
         for raw in f:
             m = LINE_RE.match(raw.rstrip("\r\n"))
             if m:
