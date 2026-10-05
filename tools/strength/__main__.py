@@ -31,7 +31,13 @@ from .batch import (  # noqa: E402
     run_replay_batch,
 )
 from .cache import StrengthCache  # noqa: E402
-from .config import ITERATIONS, MAX_DURATION_MS, PANEL_GAMES  # noqa: E402
+from .config import BOOTSTRAP_B, ITERATIONS, MAX_DURATION_MS, PANEL_GAMES  # noqa: E402
+from .engine import (  # noqa: E402
+    exit_width_stats,
+    load_strength_jsonl,
+    run_percentile,
+    strength_out_path,
+)
 from .pool import collect_boards, load_turns  # noqa: E402
 from ._paths import (  # noqa: E402
     DEFAULT_CACHE,
@@ -122,6 +128,46 @@ def cmd_increment(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_percentile(args: argparse.Namespace) -> int:
+    bb_map = load_bb_map(Path(args.bb_map)) if args.bb_map else None
+    report = run_percentile(
+        bb_version=args.bb_version,
+        roots=args.roots,
+        turns_jsonl=Path(args.turns_jsonl),
+        cache_path=Path(args.cache),
+        exe=Path(args.exe),
+        bb_map=bb_map,
+        turns=_parse_turns(args.turns),
+        k=args.panel_games,
+        target_sims=args.iterations,
+        iterations=args.iterations,
+        max_duration=args.max_duration,
+        threads=args.threads,
+        bootstrap_b=args.bootstrap,
+        player_only=args.player_only,
+        fill_missing=not args.no_fill,
+        dry_run_fill=args.dry_run,
+        out_path=Path(args.out) if args.out else None,
+    )
+    print(json.dumps({k: report[k] for k in report if k != "fill"}, ensure_ascii=False, indent=2))
+    if args.stats_out:
+        rows = load_strength_jsonl(Path(report["out"]))
+        stats = exit_width_stats(rows, max_turn=args.max_turn)
+        Path(args.stats_out).write_text(json.dumps(stats, ensure_ascii=False, indent=2), encoding="utf-8")
+        print(json.dumps(stats, ensure_ascii=False, indent=2))
+    return 0
+
+
+def cmd_exit_width(args: argparse.Namespace) -> int:
+    path = Path(args.jsonl) if args.jsonl else strength_out_path(args.bb_version)
+    rows = load_strength_jsonl(path)
+    stats = exit_width_stats(rows, max_turn=args.max_turn)
+    print(json.dumps(stats, ensure_ascii=False, indent=2))
+    if args.out:
+        Path(args.out).write_text(json.dumps(stats, ensure_ascii=False, indent=2), encoding="utf-8")
+    return 0 if stats.get("ok") else 1
+
+
 def cmd_verify_p3t0(args: argparse.Namespace) -> int:
     """Re-sim a sample of out_both pairs; require ≥99% within 3σ of historical."""
     baseline = Path(args.baseline)
@@ -156,7 +202,16 @@ def cmd_verify_p3t0(args: argparse.Namespace) -> int:
         return 2
 
     # Optionally also write through cache to exercise merge path.
+    # Never write placeholder hashes into the production strength cache — that
+    # poisons (rowBoardHash,colBoardHash,shellHash) index lookups used by P3-T3.
     cache_path = Path(args.cache) if args.cache else None
+    if cache_path and cache_path.resolve() == DEFAULT_CACHE.resolve() and not args.allow_cache_write:
+        print(
+            "verify-p3t0: refusing to write placeholder hashes into default cache; "
+            "pass a temp --cache or --allow-cache-write",
+            flush=True,
+        )
+        cache_path = None
     cache = StrengthCache(cache_path) if cache_path else None
 
     results, summary = run_replay_batch(
@@ -236,7 +291,7 @@ def _add_common(sp: argparse.ArgumentParser) -> None:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(prog="tools.strength", description="P3-T2 strength batch service")
+    p = argparse.ArgumentParser(prog="tools.strength", description="P3 strength engine (batch + percentile)")
     sub = p.add_subparsers(dest="cmd", required=True)
 
     b = sub.add_parser("backfill", help="fill missing pairs for a BB version")
@@ -252,6 +307,24 @@ def build_parser() -> argparse.ArgumentParser:
     i.add_argument("--game-id", required=True)
     i.set_defaults(func=cmd_increment)
 
+    pct = sub.add_parser("percentile", help="round-robin S/Q + bootstrap → strength.jsonl")
+    _add_common(pct)
+    pct.add_argument("--bb-version", required=True)
+    pct.add_argument("--turns", default="1-12", help="candidate turns (L1 may load ±1)")
+    pct.add_argument("--bootstrap", type=int, default=BOOTSTRAP_B)
+    pct.add_argument("--out", default=None, help="strength.jsonl path")
+    pct.add_argument("--no-fill", action="store_true", help="do not run missing-pair batch")
+    pct.add_argument("--stats-out", default=None, help="write exit-width stats JSON")
+    pct.add_argument("--max-turn", type=int, default=12, help="for --stats-out scope")
+    pct.set_defaults(func=cmd_percentile)
+
+    ew = sub.add_parser("exit-width", help="P3 exit criterion #1 on strength.jsonl")
+    ew.add_argument("--bb-version", default="1.85.0.0")
+    ew.add_argument("--jsonl", default=None, help="default data/strength/<bb>/strength.jsonl")
+    ew.add_argument("--max-turn", type=int, default=12)
+    ew.add_argument("--out", default=None)
+    ew.set_defaults(func=cmd_exit_width)
+
     v = sub.add_parser("verify-p3t0", help="re-sim out_both sample vs historical 3σ")
     _add_common(v)
     v.add_argument("--bb-version", default="1.85.0.0")
@@ -260,6 +333,11 @@ def build_parser() -> argparse.ArgumentParser:
     v.add_argument("--stride", type=int, default=50, help="take every Nth job before limit")
     v.add_argument("--out", default=None)
     v.add_argument("--verbose", action="store_true")
+    v.add_argument(
+        "--allow-cache-write",
+        action="store_true",
+        help="allow writing verify placeholder hashes into --cache (avoid default cache)",
+    )
     v.set_defaults(func=cmd_verify_p3t0)
 
     return p

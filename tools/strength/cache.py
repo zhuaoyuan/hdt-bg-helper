@@ -246,6 +246,43 @@ class StrengthCache:
             elapsed_ms=float(result["elapsedMs"]) if result.get("elapsedMs") is not None else None,
         )
 
+    def get_pair_by_hashes(
+        self,
+        *,
+        bb_version: str,
+        row_board_hash: str,
+        col_board_hash: str,
+        shell_hash: str,
+        assembler_version: str = ASSEMBLER_VERSION,
+    ) -> dict[str, Any] | None:
+        cur = self._conn.execute(
+            """
+            SELECT * FROM pairs
+            WHERE bbVersion = ? AND rowBoardHash = ? AND colBoardHash = ?
+              AND shellHash = ? AND assemblerVersion = ?
+            LIMIT 1
+            """,
+            (bb_version, row_board_hash, col_board_hash, shell_hash, assembler_version),
+        )
+        row = cur.fetchone()
+        return dict(row) if row else None
+
+    def load_pair_index(self, bb_version: str) -> dict[tuple[str, str, str], dict[str, Any]]:
+        """Index pairs by (rowBoardHash, colBoardHash, shellHash) for one BB version."""
+        cur = self._conn.execute(
+            """
+            SELECT * FROM pairs
+            WHERE bbVersion = ? AND assemblerVersion = ? AND sims > 0
+            """,
+            (bb_version, ASSEMBLER_VERSION),
+        )
+        out: dict[tuple[str, str, str], dict[str, Any]] = {}
+        for row in cur.fetchall():
+            d = dict(row)
+            key = (d["rowBoardHash"], d["colBoardHash"], d["shellHash"])
+            out[key] = d
+        return out
+
     def pair_rates(self, pair_key: str) -> dict[str, float] | None:
         p = self.get_pair(pair_key)
         if not p or int(p["sims"]) <= 0:
