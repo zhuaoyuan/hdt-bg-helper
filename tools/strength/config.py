@@ -10,3 +10,9 @@ L1_ENABLED = True
 L2_ENABLED = False  # placeholder; P3-T3 uses this
 INCLUDE_OPPONENT_BOARDS = True
 BOOTSTRAP_B = 1000
+# P3 exit criterion #1 (ADR-0014): median width and 80% coverage cap
+EXIT_WIDTH_MEDIAN_LE = 25.0
+EXIT_WIDTH_P80_LE = 30.0
+EXIT_WIDTH_FRAC = 0.80
+# Per-row "wide" flag (product label; independent of exit gate)
+WIDE_FLAG_GT = 20.0

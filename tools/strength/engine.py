@@ -22,6 +22,9 @@ from .batch import (
 from .cache import StrengthCache
 from .config import (
     BOOTSTRAP_B,
+    EXIT_WIDTH_FRAC,
+    EXIT_WIDTH_MEDIAN_LE,
+    EXIT_WIDTH_P80_LE,
     G_MIN,
     INCLUDE_OPPONENT_BOARDS,
     ITERATIONS,
@@ -30,6 +33,7 @@ from .config import (
     MAX_DURATION_MS,
     PANEL_GAMES,
     W_RELAX,
+    WIDE_FLAG_GT,
 )
 from .panel import build_panel
 from .percentile import (
@@ -361,7 +365,7 @@ def evaluate_candidate(
     )
     row["ci95"] = ci
     row["widthPts"] = width
-    if width is not None and width > 20.0:
+    if width is not None and width > WIDE_FLAG_GT:
         row["flags"] = list(row["flags"]) + ["wide"]
     return row
 
@@ -549,8 +553,11 @@ def exit_width_stats(
     jsonl_path: Path | None = None,
     max_turn: int = 12,
     min_games_queue: int = 20,
+    median_le: float = EXIT_WIDTH_MEDIAN_LE,
+    p80_le: float = EXIT_WIDTH_P80_LE,
+    frac: float = EXIT_WIDTH_FRAC,
 ) -> dict[str, Any]:
-    """P3 exit criterion #1: median width ≤15 and ≥80% ≤20 (Player, turn≤max_turn)."""
+    """P3 exit criterion #1 (ADR-0014): median ≤25 and ≥80% ≤30 (Player, turn≤max_turn)."""
     if rows is None:
         if jsonl_path is None:
             raise ValueError("rows or jsonl_path required")
@@ -585,21 +592,28 @@ def exit_width_stats(
         median = widths_sorted[mid]
     else:
         median = 0.5 * (widths_sorted[mid - 1] + widths_sorted[mid])
+    frac_le_p80 = sum(1 for w in widths if w <= p80_le) / len(widths)
     frac_le20 = sum(1 for w in widths if w <= 20.0) / len(widths)
     ok = (
         n_games >= min_games_queue
-        and median <= 15.0
-        and frac_le20 >= 0.80
+        and median <= median_le
+        and frac_le_p80 >= frac
     )
     return {
         "n": len(widths),
         "nGames": n_games,
         "maxTurn": max_turn,
         "medianWidthPts": median,
+        "fracWidthLeP80Cap": frac_le_p80,
         "fracWidthLe20": frac_le20,
         "p80WidthPts": widths_sorted[max(0, int(math.ceil(0.80 * len(widths_sorted)) - 1))],
         "p95WidthPts": widths_sorted[max(0, int(math.ceil(0.95 * len(widths_sorted)) - 1))],
-        "thresholds": {"medianLe": 15.0, "fracLe20": 0.80, "minGames": min_games_queue},
+        "thresholds": {
+            "medianLe": median_le,
+            "p80Le": p80_le,
+            "frac": frac,
+            "minGames": min_games_queue,
+        },
         "ok": ok,
         "levels": _count_by(scoped, "level"),
         "nWide": sum(1 for r in scoped if "wide" in (r.get("flags") or [])),
