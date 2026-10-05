@@ -1,6 +1,6 @@
 # ADR-0008：个人采集以团子版 HDT + 对战记录对照为主
 
-- **状态：** accepted（所有者 2026-10-04 对话确认：后续用团子版采集更多数据，并用团子自带对战记录做对照）
+- **状态：** accepted（所有者 2026-10-04 对话确认：后续用团子版采集更多数据，并用团子自带对战记录做对照）；第 4 条被 [ADR-0009](0009-allow-disconnect-reconstruct-results.md) 取代
 - **日期：** 2026-10-04
 - **相关：** 部分修订 ADR-0007 的「采集环境」条款；不推翻「插件接口以官方 HDT 行为为准」；`facts/diag-tuanzi-compat-20261004.md`、`process/field-capture.md`
 

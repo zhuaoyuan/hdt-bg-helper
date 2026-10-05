@@ -15,6 +15,7 @@
 | Q-009 | 单场模拟 1.5–5 秒、占半数核心；P3 批量模拟的总耗时是否可接受？ | 中 | 已有数据：白板 7 对 7 在 6 线程下约 150 ms 完成 1 万次（`facts/bobsbuddy-public-api.md`）；团子版历史日志 968 次中位 2.3 秒。**官方版 HDT 日志（本批 3 局，进程内 6 线程）：** `Duration=` 约 74–854 ms，全部 `CompletedSimulations` / 9996 次。下一步：用诊断记录里的真实场面在**独立进程**里测，并请所有者给出可接受的耗时标准 | P3、P4 | investigating |
 | Q-011 | 离线批量模拟（P3）该用哪个版本的 `BobsBuddy.dll` 和 CardDefs？与采集时版本不一致时，结果会偏多少？ | 中 | 已知 1.78.8 删除了 1.76.0 中 Aberration 等下架卡牌的实现，HDT 运行时会下载最新 CardDefs（`facts/bobsbuddy-public-api.md`）。**2026-10-04 批已覆盖 BB 1.78.1 / 1.80.1 / 1.81.2 / 1.85.0**（`meta.json` 有版本）；1.85.0 Input 多了 `DiscardCounter`。默认策略：重放用**采集时同版本** DLL。下一步：独立进程用同一场面跑多版本对照，量化偏差 | P2-T0、P2-T1、P3 | open |
 | Q-013 | HDT 从未赋值的 BB 公开字段（如 `Player.DeepBluesCounter`、`AnySpellCounter`、`BackToBackCounter`，`Minion.SecondaryRace`、`AvengeCounter` 等）是否会在开战时被 BB 读取、影响模拟结果？ | 中 | 清单见 `facts/bobsbuddy-simulator-input.md` 第 7 节。本批 HDT Input 上这些字段 27/27 为 0。验证仍要在独立进程里对同一场面设置 / 不设置后比较（不阻塞 P1-T3） | P1-T5、P2-T4 | open |
+| Q-014 | 拔线回合的实际战果（胜/平/负、伤害）能从哪些上下文还原？准确率多少？ | 中 | 候选信号（推断，未验证）：下一回合开战快照里己方英雄 `HEALTH`/`DAMAGE`/`ARMOR` 与本回合的差；对手英雄实体同类标签的变化（判胜方）；重连后 Power 日志的全量实体状态；下一回合 HDT `Input` / `Output` 里的双方血量。验证：在团子文本**有**战果的回合上假装不知道结果，跑还原逻辑，统计符号与伤害的一致率；再看"直接拔线"回合（无 Input）能还原到什么程度 | P2-T3、P3-T0、ADR-0009 | open |
 
 ## 已关闭
 
