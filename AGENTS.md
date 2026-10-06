@@ -41,7 +41,7 @@
 ## 5. 外部依赖与参考
 
 - **HDT 源码（只读参考）**：`C:\projects\github\Hearthstone-Deck-Tracker`，上游 `https://github.com/HearthSim/Hearthstone-Deck-Tracker`。
-  - 当前事实基线：**v1.58.3，commit `509bb0b9`（2026-09-24）**。所有 `docs/facts/` 中引用的 HDT 代码行号均以此为准。
+  - 当前事实基线：**v1.58.8，commit `78cdc2a7`（2026-10-06）**（由 v1.58.3 / `509bb0b9` 升级）。`docs/facts/` 中仍引用旧基线行号的条目需按需复核；升级摘要见 `docs/worklog/2026-10-06-hdt-baseline-pull.md`。
   - 不要修改该仓库。只有在执行"版本升级"流程（`docs/process/prompts/version-upgrade.md`）时才 `git pull`，并同步更新基线。
 - **Bob's Buddy**（HDT 内置战斗模拟器）：闭源 `BobsBuddy.dll`，由 HDT 构建脚本从 `https://libs.hearthsim.net/hdt/BobsBuddy.zip` 下载，随 HDT 安装包分发。详见 `docs/facts/bobsbuddy-simulator-input.md`。
 
