@@ -40,6 +40,7 @@
 | [`replay-roundtrip.md`](replay-roundtrip.md) | `_input`→独立进程重放往返 261/261；Q-009 耗时、Q-011 跨版本、Q-013 未赋值扰动（P2-T0，2026-10-05） |
 | [`standard-layer-import.md`](standard-layer-import.md) | P2-T3 标准层导入：每回合表、ready/团子对照/重放 3σ 本机结果（2026-10-05） |
 | [`strength-cross-p3t0.md`](strength-cross-p3t0.md) | P3-T0 全交叉：S/分位成本、bootstrap、战果相关、相对 HDT、基准集、对手场面（2026-10-05） |
+| [`positioning-strength.md`](positioning-strength.md) | 主线外：身材摆位规则对 \(S\) 的 \(\Delta S\)（1.85 T3–T7；无显著正增量）（2026-10-07） |
 | [`strength-calibration.md`](strength-calibration.md) | P3-T1 校准：iterations / K / \(G_\text{min}\) / \(w_\text{relax}\) / L2（2026-10-05） |
 | [`hdt-past-opponent-board-render.md`](hdt-past-opponent-board-render.md) | HDT 上次对手阵容叠加层实现；诊断 dump 是否足以离线渲染阵容图（2026-10-05） |
 | [`bobsbuddy-minion-enchantments.md`](bobsbuddy-minion-enchantments.md) | 随从附着附魔 → BB `Minion` 字段映射全表（上一份的附表） |
