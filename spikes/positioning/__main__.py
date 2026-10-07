@@ -17,7 +17,11 @@ _REPO = Path(__file__).resolve().parents[2]
 if str(_REPO) not in sys.path:
     sys.path.insert(0, str(_REPO))
 
-from spikes.positioning.reorder import ALL_STRATEGIES, DEFAULT_STRATEGIES  # noqa: E402
+from spikes.positioning.reorder import (  # noqa: E402
+    ALL_STRATEGIES,
+    DEFAULT_STRATEGIES,
+    KEYWORD_STRATEGIES,
+)
 from spikes.positioning.run import load_summary, run_analysis  # noqa: E402
 
 
@@ -44,7 +48,10 @@ def _parse_strats(s: str | None) -> list[str] | None:
 
 
 def cmd_run(args: argparse.Namespace) -> int:
-    strats = _parse_strats(args.strategies)
+    if args.keyword:
+        strats = _parse_strats(args.strategies) or list(KEYWORD_STRATEGIES)
+    else:
+        strats = _parse_strats(args.strategies) or list(DEFAULT_STRATEGIES)
     summary = run_analysis(
         bb_version=args.bb_version,
         turns=_parse_turns(args.turns) or list(range(3, 8)),
@@ -60,6 +67,8 @@ def cmd_run(args: argparse.Namespace) -> int:
         dry_run=args.dry_run,
         chunk_size=args.chunk_size,
         n_boot=args.n_boot,
+        swap_budget=args.swap_budget,
+        pair_cap=args.pair_cap,
     )
     print(json.dumps({"cells": summary.get("cells"), "runInfo": summary.get("runInfo")}, ensure_ascii=False, indent=2))
     return 0
@@ -105,8 +114,14 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--turns", default="3-7", help="e.g. 5 or 3-7 or 3,5,7")
     r.add_argument(
         "--strategies",
-        default=",".join(DEFAULT_STRATEGIES),
-        help=f"comma list; known={','.join(ALL_STRATEGIES)}",
+        default=None,
+        help=f"comma list; default body={','.join(DEFAULT_STRATEGIES)}; "
+        f"with --keyword default={','.join(KEYWORD_STRATEGIES)}; known={','.join(ALL_STRATEGIES)}",
+    )
+    r.add_argument(
+        "--keyword",
+        action="store_true",
+        help="Q-018 keyword/adjacency set; default out under .../keyword/",
     )
     r.add_argument("--cache", default=None)
     r.add_argument("--exe", default=None)
@@ -119,6 +134,8 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--dry-run", action="store_true")
     r.add_argument("--chunk-size", type=int, default=1500)
     r.add_argument("--n-boot", type=int, default=2000)
+    r.add_argument("--swap-budget", type=int, default=6)
+    r.add_argument("--pair-cap", type=int, default=250_000, help="global local_swap pair hard cap")
     r.set_defaults(func=cmd_run)
 
     rep = sub.add_parser("report", help="pretty-print summary.json")

@@ -2,6 +2,7 @@
 import unittest
 
 from spikes.positioning.reorder import (
+    adjacent_swaps,
     card_ids,
     max_attack,
     max_health,
@@ -11,17 +12,28 @@ from spikes.positioning.reorder import (
 )
 
 
-def _m(card: str, atk: int, hp: int, *, taunt: bool = False) -> dict:
-    return {
-        "CardID": card,
-        "_data": {
-            "MaxAttack": atk,
-            "MaxHealth": hp,
-            "BaseAttack": atk,
-            "BaseHealth": hp,
-            "Taunt": taunt,
-        },
+def _m(
+    card: str,
+    atk: int,
+    hp: int,
+    *,
+    taunt: bool = False,
+    reborn: bool = False,
+    cleave: bool = False,
+    adr: list | None = None,
+) -> dict:
+    data = {
+        "MaxAttack": atk,
+        "MaxHealth": hp,
+        "BaseAttack": atk,
+        "BaseHealth": hp,
+        "Taunt": taunt,
+        "Reborn": reborn,
+        "Cleave": cleave,
     }
+    if adr is not None:
+        data["AdditionalDeathrattles"] = adr
+    return {"CardID": card, "_data": data}
 
 
 class ReorderTests(unittest.TestCase):
@@ -69,6 +81,46 @@ class ReorderTests(unittest.TestCase):
         m = _m("Z", 7, 4)
         self.assertEqual(max_attack(m), 7)
         self.assertEqual(max_health(m), 4)
+
+    def test_taunt_pin_hp_noop_without_taunt(self):
+        items = [_m("A", 1, 1), _m("B", 9, 9)]
+        self.assertEqual(card_ids(reorder_items(items, "taunt_pin_hp")), ["A", "B"])
+
+    def test_taunt_pin_hp(self):
+        items = [_m("A", 5, 1), _m("B", 1, 3, taunt=True), _m("C", 1, 9, taunt=True), _m("D", 2, 2)]
+        out = reorder_items(items, "taunt_pin_hp")
+        self.assertEqual(card_ids(out), ["C", "B", "A", "D"])  # taunts by hp; others keep order
+
+    def test_cleave_adj_tank(self):
+        items = [
+            _m("T1", 1, 10),
+            _m("CL", 5, 1, cleave=True),
+            _m("T2", 1, 8),
+            _m("W", 1, 1),
+        ]
+        out = reorder_items(items, "cleave_adj_tank")
+        self.assertTrue(multiset_equal(card_ids(items), card_ids(out)))
+        # cleave stays; highest tanks fill neighbors
+        self.assertEqual(out[1]["CardID"], "CL")
+        neighbors = {out[0]["CardID"], out[2]["CardID"]}
+        self.assertEqual(neighbors, {"T1", "T2"})
+
+    def test_reborn_dr_right(self):
+        items = [
+            _m("A", 1, 1),
+            _m("R", 1, 1, reborn=True),
+            _m("B", 1, 1),
+            _m("D", 1, 1, adr=["x"]),
+        ]
+        out = reorder_items(items, "reborn_dr_right")
+        self.assertEqual(card_ids(out), ["A", "B", "R", "D"])
+
+    def test_adjacent_swaps(self):
+        items = [_m("A", 1, 1), _m("B", 1, 1), _m("C", 1, 1)]
+        swaps = adjacent_swaps(items)
+        self.assertEqual(len(swaps), 2)
+        self.assertEqual(card_ids(swaps[0]), ["B", "A", "C"])
+        self.assertEqual(card_ids(swaps[1]), ["A", "C", "B"])
 
 
 class StatsTests(unittest.TestCase):

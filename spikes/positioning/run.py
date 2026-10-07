@@ -32,7 +32,13 @@ from strength._paths import (  # noqa: E402
     default_diag_roots,
 )
 
-from .reorder import DEFAULT_STRATEGIES, apply_strategy_to_input  # noqa: E402
+from .local_search import hill_climb_turn  # noqa: E402
+from .reorder import (  # noqa: E402
+    DEFAULT_STRATEGIES,
+    KEYWORD_STRATEGIES,
+    SEARCH_STRATEGIES,
+    apply_strategy_to_input,
+)
 from .stats import bh_fdr, cell_report  # noqa: E402
 
 
@@ -214,14 +220,26 @@ def evaluate_turn(
     *,
     bb_version: str,
     cache: StrengthCache,
+    variants: dict[tuple[str, str], Board] | None = None,
+    extra_fields: dict[str, dict[str, Any]] | None = None,
 ) -> list[dict[str, Any]]:
+    """variants maps (board_id, strategy) → Board for search/precomputed strats."""
     rows: list[dict[str, Any]] = []
+    variants = variants or {}
+    extra_fields = extra_fields or {}
     for b in pool:
         s_orig, n_ok0, miss0 = score_board_against_pool(
             b, pool, bb_version=bb_version, cache=cache
         )
         for st in strategies:
-            cand = b if st == "orig" else with_strategy(b, st)
+            if st == "orig":
+                cand = b
+            elif (b.board_id, st) in variants:
+                cand = variants[(b.board_id, st)]
+            elif st in SEARCH_STRATEGIES:
+                cand = b
+            else:
+                cand = with_strategy(b, st)
             if st == "orig":
                 s_st, n_ok, miss = s_orig, n_ok0, miss0
                 delta = 0.0 if s_orig is not None else None
@@ -234,21 +252,23 @@ def evaluate_turn(
                     if s_st is not None and s_orig is not None
                     else None
                 )
-            rows.append(
-                {
-                    "boardId": b.board_id,
-                    "gameId": b.game_id,
-                    "turn": b.turn,
-                    "side": b.side,
-                    "strategy": st,
-                    "S_orig": s_orig,
-                    "S": s_st,
-                    "deltaS": delta,
-                    "nOpp": n_ok,
-                    "nMissing": miss,
-                    "boardHash": cand.board_hash,
-                }
-            )
+            row: dict[str, Any] = {
+                "boardId": b.board_id,
+                "gameId": b.game_id,
+                "turn": b.turn,
+                "side": b.side,
+                "strategy": st,
+                "S_orig": s_orig,
+                "S": s_st,
+                "deltaS": delta,
+                "nOpp": n_ok,
+                "nMissing": miss,
+                "boardHash": cand.board_hash,
+            }
+            ef = extra_fields.get(f"{b.board_id}|{st}")
+            if ef:
+                row.update(ef)
+            rows.append(row)
     return rows
 
 
@@ -270,6 +290,8 @@ def run_analysis(
     dry_run: bool = False,
     chunk_size: int = 1500,
     n_boot: int = 2000,
+    swap_budget: int = 6,
+    pair_cap: int = 250_000,
     progress: Callable[[str], None] | None = None,
 ) -> dict[str, Any]:
     log = progress or (lambda m: print(m, flush=True))
@@ -277,11 +299,16 @@ def run_analysis(
     strategies = strategies or list(DEFAULT_STRATEGIES)
     # Always include orig in evaluation for smoke; not in DEFAULT_STRATEGIES
     eval_strats = ["orig"] + [s for s in strategies if s != "orig"]
+    rule_strats = [s for s in eval_strats if s not in SEARCH_STRATEGIES]
+    search_strats = [s for s in eval_strats if s in SEARCH_STRATEGIES]
     roots = roots if roots is not None else default_diag_roots()
     turns_by = load_turns(turns_jsonl or DEFAULT_TURNS)
     cache_path = cache_path or DEFAULT_CACHE
     exe = exe or DEFAULT_EXE
-    out_dir = out_dir or (_REPO / "data" / "positioning" / bb_version)
+    if out_dir is None:
+        out_dir = _REPO / "data" / "positioning" / bb_version
+        if any(s in KEYWORD_STRATEGIES for s in eval_strats if s != "orig"):
+            out_dir = out_dir / "keyword"
     out_dir.mkdir(parents=True, exist_ok=True)
 
     boards = collect_boards(
@@ -319,11 +346,14 @@ def run_analysis(
 
     log(
         f"boards={len(boards)} turns={turns} strategies={eval_strats} "
-        f"cache={cache_path} dry_run={dry_run}"
+        f"cache={cache_path} dry_run={dry_run} swap_budget={swap_budget} pair_cap={pair_cap}"
     )
 
     all_rows: list[dict[str, Any]] = []
     run_info: list[dict[str, Any]] = []
+    search_meta: list[dict[str, Any]] = []
+    # Global remaining pair budget for local_swap across all turns.
+    swap_pairs_remaining = pair_cap if search_strats else 0
 
     with StrengthCache(cache_path) as cache:
         for t in turns:
@@ -333,18 +363,19 @@ def run_analysis(
                 continue
             jobs = plan_turn_jobs(
                 pool,
-                eval_strats,
+                rule_strats,
                 bb_version=bb_version,
                 cache=cache,
                 target_sims=iterations,
             )
-            info = {
+            info: dict[str, Any] = {
                 "turn": t,
                 "nPool": len(pool),
                 "pairsMissing": len(jobs),
                 "dryRun": dry_run,
+                "ruleStrategies": rule_strats,
             }
-            log(f"turn {t}: pool={len(pool)} missing_pairs={len(jobs)}")
+            log(f"turn {t}: pool={len(pool)} rule_missing_pairs={len(jobs)}")
             if not dry_run and jobs:
                 run = run_jobs_chunked(
                     jobs,
@@ -359,8 +390,71 @@ def run_analysis(
                     progress=log,
                 )
                 info.update(run)
+
+            variants: dict[tuple[str, str], Board] = {}
+            extra_fields: dict[str, dict[str, Any]] = {}
+            for st in search_strats:
+                if st != "local_swap_b6":
+                    raise SystemExit(f"unsupported search strategy: {st}")
+                turn_cap = max(0, swap_pairs_remaining)
+                orig_by_id = {b.board_id: b for b in pool}
+                if turn_cap == 0:
+                    finals = {bid: b for bid, b in orig_by_id.items()}
+                    meta = {
+                        "strategy": st,
+                        "skipped": True,
+                        "reason": "pair_cap_exhausted",
+                        "pairsPlanned": 0,
+                        "nTruncated": len(pool),
+                        "truncatedBoardIds": sorted(finals),
+                        "nImproved": 0,
+                    }
+                else:
+                    finals, meta = hill_climb_turn(
+                        pool,
+                        bb_version=bb_version,
+                        cache=cache,
+                        exe=exe,
+                        bb_dir=bb_dir,
+                        iterations=iterations,
+                        max_duration=max_duration,
+                        threads=threads,
+                        chunk_size=chunk_size,
+                        make_job=make_job,
+                        score_board_against_pool=score_board_against_pool,
+                        run_jobs_chunked=run_jobs_chunked,
+                        swap_budget=swap_budget,
+                        pair_cap=turn_cap,
+                        dry_run=dry_run,
+                        progress=log,
+                    )
+                used = int(meta.get("pairsPlanned") or 0)
+                swap_pairs_remaining = max(0, swap_pairs_remaining - used)
+                meta = {
+                    **meta,
+                    "turn": t,
+                    "turnPairCap": turn_cap,
+                    "swapPairsRemainingAfter": swap_pairs_remaining,
+                }
+                search_meta.append(meta)
+                info["localSwap"] = meta
+                trunc = set(meta.get("truncatedBoardIds") or [])
+                for bid, fb in finals.items():
+                    variants[(bid, st)] = fb
+                    extra_fields[f"{bid}|{st}"] = {
+                        "truncated": bid in trunc,
+                        "changed": fb.board_hash != orig_by_id[bid].board_hash,
+                    }
+
             run_info.append(info)
-            rows = evaluate_turn(pool, eval_strats, bb_version=bb_version, cache=cache)
+            rows = evaluate_turn(
+                pool,
+                eval_strats,
+                bb_version=bb_version,
+                cache=cache,
+                variants=variants,
+                extra_fields=extra_fields,
+            )
             all_rows.extend(rows)
 
     # Persist board-level scores
@@ -370,6 +464,9 @@ def run_analysis(
             f.write(json.dumps(r, ensure_ascii=False) + "\n")
 
     summary = build_summary(all_rows, run_info, strategies=eval_strats, turns=turns, n_boot=n_boot)
+    summary["searchMeta"] = search_meta
+    summary["swapBudget"] = swap_budget
+    summary["pairCap"] = pair_cap
     summary_path = out_dir / "summary.json"
     summary_path.write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
     log(f"wrote {scores_path} and {summary_path}")

@@ -32,3 +32,4 @@
 | [P3-T5-review-view](P3-T5-review-view.md) | P3-T5 赛后复盘视图原型（静态 HTML；ADR-0013） | implemented（验收 5 待所有者） |
 | [P3-T4-validity](P3-T4-validity.md) | P3-T4 战力分位有效性评估（名次 / 下回合血量 / 相对 HDT） | implemented |
 | [R-positioning-strength](R-positioning-strength.md) | 主线外：摆位策略对 \(S\) 增量（T3–T7，独立 spike） | implemented |
+| [R-positioning-keyword](R-positioning-keyword.md) | 主线外：关键词/邻接/有限交换摆位对 \(S\)（承接 Q-017） | implemented |
