@@ -42,6 +42,7 @@
 | [`strength-cross-p3t0.md`](strength-cross-p3t0.md) | P3-T0 全交叉：S/分位成本、bootstrap、战果相关、相对 HDT、基准集、对手场面（2026-10-05） |
 | [`positioning-strength.md`](positioning-strength.md) | 主线外：身材摆位规则对 \(S\) 的 \(\Delta S\)（1.85 T3–T7；无显著正增量）（2026-10-07） |
 | [`positioning-keyword.md`](positioning-keyword.md) | 主线外：关键词/邻接/有限交换对 \(S\)（规则无 CI+；local_swap 同池 CI+）（2026-10-07） |
+| [`positioning-enumerate.md`](positioning-enumerate.md) | 主线外：T3/T4 分层抽样全排列；头部 20% 共性（贴近原序、略偏强左）（2026-10-07） |
 | [`strength-calibration.md`](strength-calibration.md) | P3-T1 校准：iterations / K / \(G_\text{min}\) / \(w_\text{relax}\) / L2（2026-10-05） |
 | [`hdt-past-opponent-board-render.md`](hdt-past-opponent-board-render.md) | HDT 上次对手阵容叠加层实现；诊断 dump 是否足以离线渲染阵容图（2026-10-05） |
 | [`bobsbuddy-minion-enchantments.md`](bobsbuddy-minion-enchantments.md) | 随从附着附魔 → BB `Minion` 字段映射全表（上一份的附表） |

@@ -229,6 +229,15 @@ def apply_strategy_to_input(inp: dict, side: str, strategy: str) -> dict:
     return set_side_items(inp, side, reorder_items(items, strategy))
 
 
+def apply_order_to_input(inp: dict, side: str, order: list[int]) -> dict:
+    """Deep-copy input; place Side.items in the given original-index order."""
+    items = extract_side_items(inp, side)
+    if len(order) != len(items):
+        raise ValueError(f"order length {len(order)} != items {len(items)}")
+    reordered = [items[i] for i in order]
+    return set_side_items(inp, side, reordered)
+
+
 def multiset_equal(a: list[str], b: list[str]) -> bool:
     return sorted(a) == sorted(b)
 

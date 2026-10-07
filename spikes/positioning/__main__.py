@@ -5,6 +5,8 @@ Examples:
   python -m spikes.positioning run --bb-version 1.85.0.0 --turns 5 --strategies orig,atk_desc --limit-boards 8
   python -m spikes.positioning run --bb-version 1.85.0.0 --turns 3-7
   python -m spikes.positioning report --summary data/positioning/1.85.0.0/summary.json
+  python -m spikes.positioning enumerate --bb-version 1.85.0.0 --turns 3,4
+  python -m spikes.positioning enumerate --dry-run
 """
 from __future__ import annotations
 
@@ -17,6 +19,7 @@ _REPO = Path(__file__).resolve().parents[2]
 if str(_REPO) not in sys.path:
     sys.path.insert(0, str(_REPO))
 
+from spikes.positioning.enumerate_run import run_enumerate  # noqa: E402
 from spikes.positioning.reorder import (  # noqa: E402
     ALL_STRATEGIES,
     DEFAULT_STRATEGIES,
@@ -71,6 +74,44 @@ def cmd_run(args: argparse.Namespace) -> int:
         pair_cap=args.pair_cap,
     )
     print(json.dumps({"cells": summary.get("cells"), "runInfo": summary.get("runInfo")}, ensure_ascii=False, indent=2))
+    return 0
+
+
+def cmd_enumerate(args: argparse.Namespace) -> int:
+    summary = run_enumerate(
+        bb_version=args.bb_version,
+        turns=_parse_turns(args.turns) or [3, 4],
+        per_stratum=args.per_stratum,
+        min_n=args.min_n,
+        max_n=args.max_n,
+        top_frac=args.top_frac,
+        seed=args.seed,
+        pair_cap=args.pair_cap,
+        cache_path=Path(args.cache) if args.cache else None,
+        exe=Path(args.exe) if args.exe else None,
+        bb_map_path=Path(args.bb_map) if args.bb_map else None,
+        out_dir=Path(args.out) if args.out else None,
+        iterations=args.iterations,
+        max_duration=args.max_duration,
+        threads=args.threads,
+        chunk_size=args.chunk_size,
+        dry_run=args.dry_run,
+    )
+    hints = summary.get("conclusionHints") or (summary.get("aggregate") or {}).get("conclusionHints")
+    print(
+        json.dumps(
+            {
+                "nSampled": summary.get("nSampled"),
+                "nPermRows": summary.get("nPermRows"),
+                "pairsEstimatedTotal": summary.get("pairsEstimatedTotal"),
+                "truncatedBoards": summary.get("truncatedBoards"),
+                "conclusionHints": hints,
+                "boardSummaries": summary.get("boardSummaries"),
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+    )
     return 0
 
 
@@ -145,6 +186,26 @@ def main(argv: list[str] | None = None) -> int:
     )
     rep.add_argument("--include-orig", action="store_true")
     rep.set_defaults(func=cmd_report)
+
+    en = sub.add_parser("enumerate", help="tertile sample + full permute + top20% features")
+    en.add_argument("--bb-version", default="1.85.0.0")
+    en.add_argument("--turns", default="3,4")
+    en.add_argument("--per-stratum", type=int, default=2)
+    en.add_argument("--min-n", type=int, default=2)
+    en.add_argument("--max-n", type=int, default=5)
+    en.add_argument("--top-frac", type=float, default=0.20)
+    en.add_argument("--seed", default="enumerate-2026-10-07")
+    en.add_argument("--pair-cap", type=int, default=150_000)
+    en.add_argument("--cache", default=None)
+    en.add_argument("--exe", default=None)
+    en.add_argument("--bb-map", default=None)
+    en.add_argument("--out", default=None)
+    en.add_argument("--iterations", type=int, default=500)
+    en.add_argument("--max-duration", type=int, default=500)
+    en.add_argument("--threads", type=int, default=None)
+    en.add_argument("--chunk-size", type=int, default=1500)
+    en.add_argument("--dry-run", action="store_true")
+    en.set_defaults(func=cmd_enumerate)
 
     args = p.parse_args(argv)
     return int(args.func(args))

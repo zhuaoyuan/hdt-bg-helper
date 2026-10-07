@@ -23,14 +23,20 @@ python -m spikes.positioning run --keyword --bb-version 1.85.0.0 --turns 5 `
 # 关键词全量（规则 + local_swap_b6；swap≤6，pair 硬顶 2.5e5）
 python -m spikes.positioning run --keyword --bb-version 1.85.0.0 --turns 3-7
 
+# T3/T4 分层抽样全排列 + 头部 20% 共性（Q-019）
+python -m spikes.positioning enumerate --dry-run
+python -m spikes.positioning enumerate --bb-version 1.85.0.0 --turns 3,4
+
 # 看表
 python -m spikes.positioning report --summary data/positioning/1.85.0.0/keyword/summary.json
 ```
 
 默认复用 `data/strength/cache.sqlite`（pair 键含完整 Input，重排后自动 miss）。
 `--keyword` 时默认输出到 `data/positioning/<bb>/keyword/`。
+`enumerate` 输出到 `data/positioning/<bb>/enumerate/`。
 
 ## 输出
 
 - `scores.jsonl` — 每场面×策略一行
 - `summary.json` — strategy×turn 汇总（含 `searchMeta`）
+- enumerate：`sample.json` / `perms.jsonl` / `top.jsonl` / `features.json` / `summary.json`
