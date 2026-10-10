@@ -35,6 +35,7 @@
 | [`diag-capture-measured.md`](diag-capture-measured.md) | 官方 HDT 诊断记录实测：验收、Q-006 时序、TagTransfer 标签与缺口比例（2026-09-26，3 局 / 27 场） |
 | [`diag-capture-batch-20261003.md`](diag-capture-batch-20261003.md) | 后续 48 局批评估（09-27~10-03）：跨 HDT/BB 版本完整度、覆盖缺口、匿名化腐蚀 |
 | [`diag-tuanzi-compat-20261004.md`](diag-tuanzi-compat-20261004.md) | 团子版 HDT 一局 diag 与官方结构兼容；与团子对战记录交叉验证（2026-10-04） |
+| [`diag-bb188-first-game-20261007.md`](diag-bb188-first-game-20261007.md) | BB 1.88.6 首局：相对 1.85 版本差、8/8 ready、Input 键同构、不可混入 1.85 战力桶（2026-10-07） |
 | [`diag-disconnect-completeness-20261005.md`](diag-disconnect-completeness-20261005.md) | 拔线场次下 diag 完整性：直接拔线缺 Combat；「不知结果」仍可有 BB Input/Output（2026-10-05） |
 | [`combat-result-reconstruction.md`](combat-result-reconstruction.md) | 每场实际战果的还原：HDT invoker 字段 + 排行榜血量差；拔线/重连回合的处理与准确率（Q-014，2026-10-05） |
 | [`replay-roundtrip.md`](replay-roundtrip.md) | `_input`→独立进程重放往返 261/261；Q-009 耗时、Q-011 跨版本、Q-013 未赋值扰动（P2-T0，2026-10-05） |

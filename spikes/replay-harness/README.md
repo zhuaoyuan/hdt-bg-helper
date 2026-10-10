@@ -22,6 +22,7 @@ $hdt = "$env:LOCALAPPDATA\HearthstoneDeckTracker\app-1.58.6"
 
 python spikes\replay-harness\tools\roundtrip.py --root data\BgHelperDiag --versions 1.78.1.0 1.85.0.0
 python spikes\replay-harness\tools\roundtrip.py --root data\BgHelperDiag --mode q011 --limit 40
+python spikes\replay-harness\tools\roundtrip.py --mode q011 --versions 1.85.0.0 --alt-version 1.88.6.0 --limit 100 --roots data\BgHelperDiag $env:APPDATA\HearthstoneDeckTracker\BgHelperDiag
 python spikes\replay-harness\tools\roundtrip.py --root data\BgHelperDiag --mode q013 --limit 30
 
 # P3 批跑：驻留进程读 JSONL（每行 {"id","input"} 或 {"id","inputPath"}）

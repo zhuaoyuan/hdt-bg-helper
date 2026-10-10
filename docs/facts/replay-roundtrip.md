@@ -55,6 +55,8 @@ python spikes/replay-harness/tools/roundtrip.py --root data/BgHelperDiag --versi
 
 ## 3. Q-011：跨 BB 版本
 
+### 3.1 1.78.1 → 1.85.0（有显著偏差）
+
 对采集版为 1.78.1 的场面，用同 Input 在 1.78.1 与 1.85.0 上各跑一次（样本 40 场）。
 
 | 结果 | 场次 |
@@ -62,8 +64,25 @@ python spikes/replay-harness/tools/roundtrip.py --root data/BgHelperDiag --versi
 | 五率在 3σ（含地板）内一致 | 37 |
 | 显著偏差 | **3**（Δwin 约 0.05 / 0.08 / **0.23**） |
 
-结论：**重放与批量模拟必须按 `meta.bobsBuddy.fileVersion` 选 DLL**；用新版 DLL 跑旧场面会在少数局出现不可忽略的五率漂移。1.80.1 / 1.81.2 本机暂无 DLL，未测；策略不变。
+### 3.2 1.85.0 → 1.88.6（本批无显著偏差）
 
+对采集版为 **1.85.0.0** 的场面，同 Input 分别用 1.85.0 与 **1.88.6** DLL 重放（`roundtrip.py --mode q011 --versions 1.85.0.0 --alt-version 1.88.6.0`；根目录 `data/BgHelperDiag` + AppData `BgHelperDiag`）。
+
+| 项 | 结果 |
+| --- | --- |
+| 样本 | **100** 场（9 局，回合 1–15；其中 win∈(0.05,0.95) 的中等场面 28 场） |
+| hydrate / 模拟失败 | **0** |
+| 1.85 DLL vs 1.88.6 DLL：3σ 一致 | **100 / 100** |
+| 记录 Output vs 1.88.6 重放：3σ 一致 | **100 / 100** |
+| \|Δwin\|（两 DLL） | max≈0.010，p95≈0.006，mean≈0.0013（均远低于约 0.03 的 3σ 地板） |
+
+原始 JSON：`spikes/replay-harness/out/out-q011-185-vs-188-n100.json`（本地）。核实：2026-10-07。
+
+### 3.3 策略
+
+- **默认仍按采集时 `fileVersion` 选 DLL**（1.78→1.85 已证明会偏）。
+- **1.85 场面用 1.88.6 重算五率：本批可视为无显著差异**；这不等于可以启用 L2 / 把两版本场面混进同一战力参照池（Q-016 / ADR-0011 仍关；池分布与冷启动另论）。
+- 1.80.1 / 1.81.2 本机仍缺 DLL 时跳过。
 ## 4. Q-013：未赋值标量扰动
 
 在 30 场（双方至少 2 随从）上：基线重放 vs 将双方 `DeepBluesCounter` / `AnySpellCounter` / `BackToBackCounter` 均设为 7 后再跑。

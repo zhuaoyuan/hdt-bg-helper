@@ -350,52 +350,112 @@ def mode_q009(args, bb_map, exe):
 
 
 def mode_q011(args, bb_map, exe):
-    """Same input on native BB vs alternate available BB."""
+    """Same input on native BB vs alternate available BB.
+
+    --alt-version forces the foreign DLL (e.g. 1.85 boards vs 1.88.6).
+    --versions limits which *capture* BB versions are attempted.
+    """
     alts = [v for v in bb_map if os.path.isfile(os.path.join(bb_map[v], "BobsBuddy.dll"))]
     stats = Counter()
     rows = []
-    for gd, meta, bb, seg, rec, inp, out in iter_combats(Path(args.root)):
-        if rec is None or inp is None or out is None:
+    roots = args.roots if getattr(args, "roots", None) else [args.root]
+    for root in roots:
+        for gd, meta, bb, seg, rec, inp, out in iter_combats(Path(root)):
+            if rec is None or inp is None or out is None:
+                continue
+            if args.versions and bb not in args.versions:
+                continue
+            if not bb_map.get(bb) or not os.path.isfile(os.path.join(bb_map[bb], "BobsBuddy.dll")):
+                stats["skipped_no_dll"] += 1
+                continue
+            if args.alt_version:
+                alt_ver = args.alt_version
+                if alt_ver == bb:
+                    stats["alt_same_as_native"] += 1
+                    continue
+                if not bb_map.get(alt_ver) or not os.path.isfile(
+                    os.path.join(bb_map[alt_ver], "BobsBuddy.dll")
+                ):
+                    stats["skipped_no_alt_dll"] += 1
+                    continue
+            else:
+                others = [v for v in alts if v != bb]
+                if not others:
+                    stats["no_alt"] += 1
+                    continue
+                # legacy heuristic: for 1.85 prefer oldest other; else newest
+                alt_ver = others[0] if bb.startswith("1.85") else others[-1]
+            if stats["attempted"] >= args.limit > 0:
+                break
+            stats["attempted"] += 1
+            turn = turn_of(seg, rec)
+            iters = int(out.get("simulationCount") or 10000)
+            native = run_replay(exe, bb_map[bb], inp, iters, args.max_duration)
+            foreign = run_replay(exe, bb_map[alt_ver], inp, iters, args.max_duration)
+            if not native.get("ok") or not foreign.get("ok"):
+                stats["fail"] += 1
+                rows.append(
+                    {
+                        "game": gd.name,
+                        "turn": turn,
+                        "bb": bb,
+                        "alt": alt_ver,
+                        "status": "fail",
+                        "nativeError": None if native.get("ok") else native.get("error"),
+                        "altError": None if foreign.get("ok") else foreign.get("error"),
+                        "nativeStderr": None if native.get("ok") else (native.get("stderr") or "")[:300],
+                        "altStderr": None if foreign.get("ok") else (foreign.get("stderr") or "")[:300],
+                    }
+                )
+                if args.verbose:
+                    print(
+                        f"FAIL {gd.name} T{turn} native_ok={native.get('ok')} "
+                        f"alt_ok={foreign.get('ok')} altErr={(foreign.get('error') or '')[:120]}"
+                    )
+                continue
+            ok, detail = rates_within_3sigma(native, foreign)
+            status = "same" if ok else "diff"
+            stats[status] += 1
+            # also vs recorded Output (literal "recalc with new BB")
+            ok_rec, detail_rec = rates_within_3sigma(out, foreign)
+            status_rec = "rec_same" if ok_rec else "rec_diff"
+            stats[status_rec] += 1
+            rows.append(
+                {
+                    "game": gd.name,
+                    "turn": turn,
+                    "bb": bb,
+                    "alt": alt_ver,
+                    "status": status,
+                    "statusVsRecorded": status_rec,
+                    "detail": detail,
+                    "detailVsRecorded": detail_rec,
+                    "nativeExit": native.get("myExitCondition"),
+                    "altExit": foreign.get("myExitCondition"),
+                    "deltaWin": detail["winRate"]["delta"],
+                    "deltaWinVsRecorded": detail_rec["winRate"]["delta"],
+                }
+            )
+            if args.verbose or status == "diff" or status_rec == "rec_diff":
+                print(
+                    f"{status.upper():4}/{status_rec} {gd.name} T{turn} {bb} vs {alt_ver} "
+                    f"Δwin={detail['winRate']['delta']:.4f} "
+                    f"Δwin_rec={detail_rec['winRate']['delta']:.4f}"
+                )
+        else:
             continue
-        if not bb_map.get(bb) or not os.path.isfile(os.path.join(bb_map[bb], "BobsBuddy.dll")):
-            stats["skipped_no_dll"] += 1
-            continue
-        others = [v for v in alts if v != bb]
-        if not others:
-            stats["no_alt"] += 1
-            continue
-        if stats["attempted"] >= args.limit > 0:
-            break
-        stats["attempted"] += 1
-        turn = turn_of(seg, rec)
-        iters = int(out.get("simulationCount") or 10000)
-        native = run_replay(exe, bb_map[bb], inp, iters, args.max_duration)
-        alt_ver = others[-1]  # prefer newest listed
-        # pick farthest version
-        alt_ver = others[0] if bb.startswith("1.85") else others[-1]
-        foreign = run_replay(exe, bb_map[alt_ver], inp, iters, args.max_duration)
-        if not native.get("ok") or not foreign.get("ok"):
-            stats["fail"] += 1
-            rows.append({"game": gd.name, "turn": turn, "bb": bb, "alt": alt_ver, "status": "fail"})
-            continue
-        ok, detail = rates_within_3sigma(native, foreign)
-        status = "same" if ok else "diff"
-        stats[status] += 1
-        rows.append(
-            {
-                "game": gd.name,
-                "turn": turn,
-                "bb": bb,
-                "alt": alt_ver,
-                "status": status,
-                "detail": detail,
-                "nativeExit": native.get("myExitCondition"),
-                "altExit": foreign.get("myExitCondition"),
-            }
-        )
-        if args.verbose or status == "diff":
-            print(f"{status.upper():4} {gd.name} T{turn} {bb} vs {alt_ver} Δwin={detail['winRate']['delta']:.4f}")
+        break  # inner broke on limit
     print_summary("q011", stats, rows, args)
+    if rows:
+        diffs = [r for r in rows if r.get("status") == "diff"]
+        deltas = [float(r["deltaWin"]) for r in rows if r.get("deltaWin") is not None]
+        if deltas:
+            deltas_s = sorted(deltas)
+            print(
+                f"Δwin (native vs alt): n={len(deltas)} max={deltas_s[-1]:.4f} "
+                f"p95={deltas_s[min(len(deltas_s)-1, int(0.95*(len(deltas_s)-1)))]:.4f} "
+                f"mean={sum(deltas)/len(deltas):.4f} significant={len(diffs)}"
+            )
     return rows, stats
 
 
@@ -460,12 +520,23 @@ def print_summary(mode, stats, rows, args):
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--root", default=str(HARNESS.parents[1] / "data" / "BgHelperDiag"))
+    ap.add_argument(
+        "--roots",
+        nargs="*",
+        default=None,
+        help="optional multiple diag roots (overrides --root)",
+    )
     ap.add_argument("--bb-map", default=str(DEFAULT_BB_MAP))
     ap.add_argument("--exe", default=str(DEFAULT_EXE))
     ap.add_argument("--mode", choices=["roundtrip", "q009", "q011", "q013"], default="roundtrip")
     ap.add_argument("--limit", type=int, default=0, help="max combats to attempt (0=all)")
     ap.add_argument("--max-duration", type=int, default=5000)
     ap.add_argument("--versions", nargs="*", help="only these BB fileVersions")
+    ap.add_argument(
+        "--alt-version",
+        default="",
+        help="q011: foreign BB fileVersion (e.g. 1.88.6.0)",
+    )
     ap.add_argument("--json-out", default="")
     ap.add_argument("--verbose", action="store_true")
     args = ap.parse_args()
