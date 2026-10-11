@@ -525,6 +525,23 @@ def cmd_pool_join(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_score_policy_v2(args: argparse.Namespace) -> int:
+    from .score_search_v2 import run_score_policy_v2
+
+    pool = _resolve_pool(args)
+    summary = run_score_policy_v2(
+        sim_pool=pool,
+        roots=args.roots,
+        turns_jsonl=Path(args.turns_jsonl),
+        cache_path=Path(args.cache),
+        out_dir=Path(args.out) if args.out else None,
+        n_boot=args.bootstrap,
+    )
+    if not summary.get("strengthMtimeUnchanged", False):
+        return 1
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="tools.strength", description="P3 strength engine (batch + percentile)")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -613,6 +630,16 @@ def build_parser() -> argparse.ArgumentParser:
     _add_pool_selector(ls)
     ls.add_argument("--chunk", type=int, default=400)
     ls.set_defaults(func=cmd_loss_summary)
+
+    v2 = sub.add_parser(
+        "score-policy-v2",
+        help="ten-curve search into score-policy-v2/ (does not write strength.jsonl)",
+    )
+    _add_common(v2)
+    _add_pool_selector(v2)
+    v2.add_argument("--out", default=None)
+    v2.add_argument("--bootstrap", type=int, default=2000)
+    v2.set_defaults(func=cmd_score_policy_v2)
 
     return p
 
