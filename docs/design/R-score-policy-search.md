@@ -1,6 +1,6 @@
 # 方案：随回合变化的对战得分搜索
 
-- **状态：** review（第 8 节已由所有者确认。Q-020 已关闭：伤害被上限截断，\(\alpha=\beta=0\)。2026-10-11 搜索完成但**无效**，未替换 `strength.jsonl`。见 `facts/score-policy-search-20261011.md`）
+- **状态：** review（第一轮已跑完。下一轮搜索改看 [`R-score-policy-search-v2.md`](R-score-policy-search-v2.md)，待 ADR-0019 接受后再实现。本文件的公式锁与第一轮结果仍然有效。）
 - **任务：** 主线外。活的战力计算改为本方案的 \(s\)（ADR-0016），不再与 \(P_w+0.5P_t\) 并列
 - **作者 / 日期：** agent / 2026-10-11
 - **相关：** ADR-0016、ADR-0017、ADR-0003、ADR-0011；`facts/strength-validity-p3t4.md`；Q-020

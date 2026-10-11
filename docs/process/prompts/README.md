@@ -32,7 +32,8 @@ agent 读到提示词后按其中的步骤执行。每份提示词都默认 agen
 | [`p3-t2-batch-sim.md`](p3-t2-batch-sim.md) | **P3-T2** 专用：ReplaySim 迁移、入池/面板/缓存/增量批跑 |
 | [`p3-t3-percentile.md`](p3-t3-percentile.md) | **P3-T3** 专用：循环赛分位、聚类 bootstrap、放宽阶梯、退出统计 |
 | [`p3-t4-validity.md`](p3-t4-validity.md) | **P3-T4** 专用：分位↔名次/血量有效性、相对 HDT 增量（名次标签） |
-| [`score-policy-search.md`](score-policy-search.md) | 主线外：新对战得分；原始数据复用，P3 战力分产物等有效后再重做（ADR-0018） |
+| [`score-policy-search.md`](score-policy-search.md) | 主线外：第一轮对战得分搜索（已跑完；下一轮见 v2） |
+| [`score-policy-search-v2.md`](score-policy-search-v2.md) | 主线外：第二轮搜索。平权形状、中段保血、确认半门槛（ADR-0019 已接受） |
 
 相关操作说明（不是提示词）：[`field-capture.md`](../field-capture.md) — 在没有开发环境的电脑上继续打酒馆并带回诊断记录。
 

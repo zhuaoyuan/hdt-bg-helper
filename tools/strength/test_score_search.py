@@ -48,6 +48,14 @@ class LastCombatTests(unittest.TestCase):
         self.assertAlmostEqual(rows[0]["meanQ"], 0.4)
         self.assertEqual(rows[0]["negPlacement"], -1.0)
 
+    def test_raw_placement_overrides_turn_label(self) -> None:
+        a = _board("g1", 10, 8)
+        b = _board("g2", 10, None)
+        pct = {a.board_id: 0.2, b.board_id: 0.9}
+        rows = ranked_game_points([a, b], pct, placement_by_game={"g2": 3})
+        self.assertEqual([r["gameId"] for r in rows], ["g2"])
+        self.assertEqual(rows[0]["placement"], 3)
+
 
 class JudgmentTests(unittest.TestCase):
     def test_needs_all_three(self) -> None:

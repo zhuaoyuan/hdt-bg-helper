@@ -18,6 +18,7 @@ from .engine import build_score_map
 from .panel import build_panel
 from .percentile import choose_level, opponent_set, panel_ids_for_slack, round_robin
 from .pool import Board, bucket_boards, collect_boards, load_turns
+from .raw_placement import load_final_places
 from .score_policy import T1_GRID, W_FLOOR, baseline_score, curve_score
 from .sim_pools import member_versions, sim_pool_of
 from ._paths import DEFAULT_CACHE, DEFAULT_TURNS, REPO, default_diag_roots
@@ -49,8 +50,13 @@ def placement_of(board: Board) -> int | None:
 def ranked_game_points(
     boards: list[Board],
     percentile_by_id: dict[str, float | None],
+    placement_by_game: dict[str, int] | None = None,
 ) -> list[dict[str, Any]]:
-    """One row per game that has a placement and at least one last-3 percentile."""
+    """One row per game that has a placement and at least one last-3 percentile.
+
+    ``placement_by_game`` replaces the standard-layer label. Games absent from
+    that map are unlabeled even if the turn row has a 团子 place.
+    """
     by_game: dict[str, list[Board]] = defaultdict(list)
     for b in boards:
         if b.side == "Player":
@@ -58,11 +64,16 @@ def ranked_game_points(
     rows: list[dict[str, Any]] = []
     for gid, group in by_game.items():
         ordered = sorted(group, key=lambda b: b.turn)
-        place = None
-        for b in reversed(ordered):
-            place = placement_of(b)
-            if place is not None:
-                break
+        if placement_by_game is not None:
+            if gid not in placement_by_game:
+                continue
+            place = int(placement_by_game[gid])
+        else:
+            place = None
+            for b in reversed(ordered):
+                place = placement_of(b)
+                if place is not None:
+                    break
         if place is None:
             continue
         qs = last_combat_values([(b.turn, percentile_by_id.get(b.board_id)) for b in ordered])
@@ -153,7 +164,7 @@ def _point_record(
         "nGames": rho_pack.get("n"),
         "nBoardsInLast3": n_boards,
         "nPlayer": n_player,
-        "reason": "Q-020: no usable damage distribution; selection is last-3 mean Q vs -placement",
+        "reason": "Q-020: no usable damage distribution; selection is last-3 mean Q vs -placement from the raw game_end leaderboard",
     }
 
 
@@ -218,7 +229,25 @@ def run_score_policy_search(
             for b in by_turn.get(t, [])
             if b.side == "Player"
         ]
-        log(f"players={len(candidates)} turns={len(by_turn)} thin={sorted(thin_turns) if slack else []}")
+        places = load_final_places(roots or default_diag_roots())
+        tuanzi: dict[str, int] = {}
+        for cand in candidates:
+            got = placement_of(cand)
+            if got is not None:
+                tuanzi[cand.game_id] = got
+        both = [gid for gid in tuanzi if gid in places]
+        n_agree = sum(1 for gid in both if places[gid] == tuanzi[gid])
+        disagree = [
+            {"gameId": gid, "raw": places[gid], "tuanzi": tuanzi[gid]}
+            for gid in both
+            if places[gid] != tuanzi[gid]
+        ]
+        log(
+            f"players={len(candidates)} turns={len(by_turn)} "
+            f"thin={sorted(thin_turns) if slack else []} "
+            f"rawPlace={sum(1 for c in candidates if c.game_id in places)} "
+            f"tuanziAgree={n_agree}/{len(both)}"
+        )
 
         specs: list[tuple[str, int | None, Callable]] = [("baseline", None, baseline_score)]
         for t1 in T1_GRID:
@@ -239,7 +268,7 @@ def run_score_policy_search(
             )
             log(f"  pairs missing={len(missing)}; percentiles…")
             pct = player_percentiles(candidates, by_turn, panels, scores)
-            points = ranked_game_points(candidates, pct)
+            points = ranked_game_points(candidates, pct, placement_by_game=places)
             rho_pack = correlate_last3(points, n_boot=n_boot, seed=17 if t1 is None else 17 + int(t1))
             n_boards = sum(p["nLast"] for p in points)
             mean_of_mean = mean_or_none([float(p["meanQ"]) for p in points])
@@ -279,6 +308,8 @@ def run_score_policy_search(
         "alpha": 0.0,
         "beta": 0.0,
         "selection": "last3-mean-Q vs -placement",
+        "placementSource": "diag game_end PLAYER_LEADERBOARD_PLACE",
+        "tuanziAgree": {"n": n_agree, "nBoth": len(both), "disagree": disagree},
         "adopted": None if adopted is None else {"t1": adopted["t1"], "rhoLast3": adopted["rhoLast3"]},
         "baselineRho": baseline.get("rhoLast3"),
         "judgment": judgment,

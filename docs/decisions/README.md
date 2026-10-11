@@ -45,3 +45,4 @@
 | [ADR-0016](0016-turn-dependent-matchup-score.md) | 对战得分随回合变化，并替换默认战力 | accepted（选点被 ADR-0017 取代；覆盖分位文件的时机被 ADR-0018 取代） |
 | [ADR-0017](0017-score-search-blood-and-placement.md) | 得分搜索：最后 3 场对名次，其余回合对平均掉血 | accepted |
 | [ADR-0018](0018-reuse-raw-redo-score-dependents.md) | 原始对战数据复用；依赖战力分的 P3 产物等新引擎有效后再重做 | accepted |
+| [ADR-0019](0019-score-search-shape-and-midgame.md) | 平权只搜单调下降的少数形状；中段看保血，末段名次作约束 | accepted |

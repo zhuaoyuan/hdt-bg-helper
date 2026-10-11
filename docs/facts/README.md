@@ -47,7 +47,8 @@
 | [`positioning-enumerate.md`](positioning-enumerate.md) | 主线外：T3/T4 分层抽样全排列；头部 20% 共性（贴近原序、略偏强左）（2026-10-07） |
 | [`strength-calibration.md`](strength-calibration.md) | P3-T1 校准：iterations / K / \(G_\text{min}\) / \(w_\text{relax}\) / L2（2026-10-05） |
 | [`damage-results-cap-q020.md`](damage-results-cap-q020.md) | Q-020：`damageResults` 在正的 `DamageCap` 上被截断；符号与平局为 0（2026-10-11） |
-| [`score-policy-search-20261011.md`](score-policy-search-20261011.md) | 平权曲线搜索完成但无效（有名次 11 局，相关不高于基线且为负）；未换 `strength.jsonl` |
+| [`score-policy-search-20261011.md`](score-policy-search-20261011.md) | 平权曲线搜索（团子名次，11 局）完成但无效；未换 `strength.jsonl` |
+| [`score-policy-search-raw-place-20261011.md`](score-policy-search-raw-place-20261011.md) | 同一搜索改用局末排行榜名次（56 局）：\(t_1=15\) 略高于基线，字面有效；分位文件仍未换 |
 | [`hdt-past-opponent-board-render.md`](hdt-past-opponent-board-render.md) | HDT 上次对手阵容叠加层实现；诊断 dump 是否足以离线渲染阵容图（2026-10-05） |
 | [`bobsbuddy-minion-enchantments.md`](bobsbuddy-minion-enchantments.md) | 随从附着附魔 → BB `Minion` 字段映射全表（上一份的附表） |
 | [`local-environment.md`](local-environment.md) | 所有者本机实际运行的 HDT 版本、数据目录、可用工具 |
