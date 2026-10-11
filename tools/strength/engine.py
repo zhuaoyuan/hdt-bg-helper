@@ -80,6 +80,7 @@ def build_score_map(
     target_sims: int = ITERATIONS,
     turn_slack: int = 1,
     slack_turns: set[int] | None = None,
+    score_fn=None,
 ) -> tuple[ScoreMap, list[tuple[Board, Board]]]:
     """Load s(row,col) from cache for leave-one-game pairs within turn±slack.
 
@@ -149,11 +150,17 @@ def build_score_map(
                 n = int(p["sims"])
                 win = float(p["wins"]) / n
                 tie = float(p["ties"]) / n
-                s = win + 0.5 * tie
+                if score_fn is None:
+                    s = win + 0.5 * tie
+                    se2 = se2_of_s(s, n)
+                else:
+                    # New s is not a Bernoulli rate; do not reuse s(1-s)/n.
+                    s = float(score_fn(win, tie, row.turn))
+                    se2 = 0.0
                 scores[row.board_id][col.board_id] = PairStat(
                     s=s,
                     sims=n,
-                    se2=se2_of_s(s, n),
+                    se2=se2,
                     my_death_rate=p.get("myDeathRate"),
                     av_damage=p.get("avDamage"),
                 )

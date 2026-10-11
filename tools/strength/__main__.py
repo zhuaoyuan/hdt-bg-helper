@@ -403,6 +403,21 @@ def _add_pool_selector(sp: argparse.ArgumentParser) -> None:
     sp.add_argument("--sim-pool", default=None, help="sim pool id (earliest member file version)")
 
 
+def cmd_score_policy(args: argparse.Namespace) -> int:
+    from .score_search import run_score_policy_search
+
+    pool = _resolve_pool(args)
+    run_score_policy_search(
+        sim_pool=pool,
+        roots=args.roots,
+        turns_jsonl=Path(args.turns_jsonl),
+        cache_path=Path(args.cache),
+        out_dir=Path(args.out) if args.out else None,
+        n_boot=args.bootstrap,
+    )
+    return 0
+
+
 def cmd_pools(_args: argparse.Namespace) -> int:
     for row in load_table(refresh=True):
         print(f"{row['bbVersion']}\t{row['simPool']}\t{row.get('joinedAt', '')}\t{row.get('evidence', '')}")
@@ -555,6 +570,16 @@ def build_parser() -> argparse.ArgumentParser:
     join.add_argument("--check", required=True, help="pool-check JSON with passed=true")
     join.add_argument("--joined-at", default="2026-10-11")
     join.set_defaults(func=cmd_pool_join)
+
+    sp = sub.add_parser(
+        "score-policy",
+        help="tie-weight search into score-policy/ (does not write strength.jsonl)",
+    )
+    _add_common(sp)
+    _add_pool_selector(sp)
+    sp.add_argument("--out", default=None, help="sidecar directory (default data/strength/<pool>/score-policy)")
+    sp.add_argument("--bootstrap", type=int, default=2000)
+    sp.set_defaults(func=cmd_score_policy)
 
     return p
 
