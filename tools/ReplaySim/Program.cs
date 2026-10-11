@@ -205,6 +205,15 @@ namespace ReplaySim
 					["myExitCondition"] = GetString(output, "myExitCondition"),
 					["hydrateWarnings"] = new JArray(hydrator.Warnings),
 				};
+				var cap = ReadDamageCap(root);
+				if(TrySummarizeLosses(output, cap, out var lossCount, out var cappedLossCount, out var uncappedMedian, out var sampleCount))
+				{
+					result["lossCount"] = lossCount;
+					result["cappedLossCount"] = cappedLossCount;
+					result["uncappedLossMedian"] = uncappedMedian;
+					result["lossSampleCount"] = sampleCount;
+					result["damageCap"] = cap;
+				}
 				return result;
 			}
 			catch(Exception ex)
@@ -241,6 +250,62 @@ namespace ReplaySim
 			var v = obj.GetType().GetField(name, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)?.GetValue(obj)
 				?? obj.GetType().GetProperty(name, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)?.GetValue(obj);
 			return v == null ? (int?)null : Convert.ToInt32(v, CultureInfo.InvariantCulture);
+		}
+
+		private static int ReadDamageCap(JToken root)
+		{
+			var token = root?["DamageCap"];
+			if(token == null || token.Type == JTokenType.Null)
+				return 0;
+			return token.Value<int>();
+		}
+
+		/// <summary>
+		/// Loss samples are negative damageResults. A positive DamageCap censors at -cap.
+		/// uncappedLossMedian is the median of taken damage (positive) among losses that are not on the cap.
+		/// </summary>
+		private static bool TrySummarizeLosses(
+			object output,
+			int damageCap,
+			out int lossCount,
+			out int cappedLossCount,
+			out double? uncappedMedian,
+			out int sampleCount)
+		{
+			lossCount = 0;
+			cappedLossCount = 0;
+			uncappedMedian = null;
+			sampleCount = 0;
+			var raw = output.GetType().GetField("damageResults", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)?.GetValue(output);
+			if(raw is not System.Collections.IEnumerable samples || raw is string)
+				return false;
+			var uncapped = new List<int>();
+			foreach(var item in samples)
+			{
+				if(item == null)
+					continue;
+				sampleCount++;
+				var v = Convert.ToInt32(item, CultureInfo.InvariantCulture);
+				if(v >= 0)
+					continue;
+				lossCount++;
+				var taken = -v;
+				if(damageCap > 0 && taken == damageCap)
+					cappedLossCount++;
+				else
+					uncapped.Add(taken);
+			}
+			if(sampleCount == 0)
+				return false;
+			if(uncapped.Count > 0)
+			{
+				uncapped.Sort();
+				var n = uncapped.Count;
+				uncappedMedian = (n % 2 == 1)
+					? uncapped[n / 2]
+					: (uncapped[n / 2 - 1] + uncapped[n / 2]) / 2.0;
+			}
+			return true;
 		}
 
 		private static string GetString(object obj, string name)

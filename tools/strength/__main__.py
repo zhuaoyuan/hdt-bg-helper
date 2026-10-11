@@ -403,6 +403,30 @@ def _add_pool_selector(sp: argparse.ArgumentParser) -> None:
     sp.add_argument("--sim-pool", default=None, help="sim pool id (earliest member file version)")
 
 
+def cmd_loss_summary(args: argparse.Namespace) -> int:
+    from .loss_backfill import run_loss_summary_backfill
+
+    pool = _resolve_pool(args)
+    report = run_loss_summary_backfill(
+        sim_pool=pool,
+        roots=args.roots,
+        turns_jsonl=Path(args.turns_jsonl),
+        cache_path=Path(args.cache),
+        exe=Path(args.exe),
+        bb_map_path=Path(args.bb_map),
+        max_hours=args.max_hours,
+        chunk=args.chunk,
+        dry_run=args.dry_run,
+    )
+    if report.get("stopped") == "over-budget":
+        return 3
+    if not report.get("winsUntouched"):
+        return 1
+    if report.get("started") and int(report.get("written") or 0) == 0 and int(report.get("pairsToRun") or 0) > 0:
+        return 1
+    return 0
+
+
 def cmd_score_policy(args: argparse.Namespace) -> int:
     from .score_search import run_score_policy_search
 
@@ -580,6 +604,15 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--out", default=None, help="sidecar directory (default data/strength/<pool>/score-policy)")
     sp.add_argument("--bootstrap", type=int, default=2000)
     sp.set_defaults(func=cmd_score_policy)
+
+    ls = sub.add_parser(
+        "loss-summary",
+        help="write turn 6-14 loss-damage summaries without changing win/tie/loss counts",
+    )
+    _add_common(ls)
+    _add_pool_selector(ls)
+    ls.add_argument("--chunk", type=int, default=400)
+    ls.set_defaults(func=cmd_loss_summary)
 
     return p
 

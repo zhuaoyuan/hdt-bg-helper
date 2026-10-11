@@ -74,6 +74,7 @@ class StrengthCache:
         self._conn.row_factory = sqlite3.Row
         self._conn.executescript(SCHEMA)
         self._migrate_sim_pool()
+        self._ensure_loss_summary_columns()
         self._conn.commit()
 
     def _user_version(self) -> int:
@@ -88,6 +89,65 @@ class StrengthCache:
         self._conn.execute("CREATE INDEX IF NOT EXISTS idx_pairs_pool ON pairs(simPool)")
         self._conn.execute("CREATE INDEX IF NOT EXISTS idx_matchups_pool ON matchups(simPool)")
         self._conn.execute(f"PRAGMA user_version = {_SCHEMA_VERSION}")
+
+    def _ensure_loss_summary_columns(self) -> None:
+        """ADR-0019 loss-damage columns. Wins, ties, and losses are not touched."""
+        cols = {r[1] for r in self._conn.execute("PRAGMA table_info(pairs)")}
+        adds = {
+            "lossCount": "INTEGER",
+            "cappedLossCount": "INTEGER",
+            "uncappedLossMedian": "REAL",
+            "lossSampleCount": "INTEGER",
+        }
+        for name, decl in adds.items():
+            if name not in cols:
+                self._conn.execute(f"ALTER TABLE pairs ADD COLUMN {name} {decl}")
+
+    def write_loss_summary(
+        self,
+        pair_key: str,
+        *,
+        loss_count: int,
+        capped_loss_count: int,
+        uncapped_median: float | None,
+        sample_count: int,
+    ) -> None:
+        """Write the loss-damage summary only. Does not change win/tie/loss counts."""
+        cur = self._conn.execute(
+            """
+            UPDATE pairs
+            SET lossCount = ?, cappedLossCount = ?, uncappedLossMedian = ?, lossSampleCount = ?
+            WHERE pairKey = ?
+            """,
+            (
+                int(loss_count),
+                int(capped_loss_count),
+                None if uncapped_median is None else float(uncapped_median),
+                int(sample_count),
+                pair_key,
+            ),
+        )
+        if cur.rowcount != 1:
+            raise KeyError(f"pairKey not in cache: {pair_key}")
+        self._conn.commit()
+
+    def write_loss_summaries(self, rows: Iterable[tuple]) -> int:
+        """Batch form of write_loss_summary. Each row is
+        (loss_count, capped_loss_count, uncapped_median, sample_count, pair_key).
+        """
+        payload = list(rows)
+        if not payload:
+            return 0
+        self._conn.executemany(
+            """
+            UPDATE pairs
+            SET lossCount = ?, cappedLossCount = ?, uncappedLossMedian = ?, lossSampleCount = ?
+            WHERE pairKey = ?
+            """,
+            payload,
+        )
+        self._conn.commit()
+        return len(payload)
 
     def _ensure_pairs_sim_pool(self) -> None:
         cols = {r[1] for r in self._conn.execute("PRAGMA table_info(pairs)")}
