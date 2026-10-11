@@ -4,12 +4,16 @@ from __future__ import annotations
 
 import sqlite3
 import time
+from collections import defaultdict
 from pathlib import Path
 from typing import Any, Iterable
 
 from . import ASSEMBLER_VERSION
 from .assembler import rates_to_counts, score_of
+from .sim_pools import sim_pool_of
 
+# Bump when pair/matchup grouping moves from file version to simPool.
+_SCHEMA_VERSION = 2
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS boards (
@@ -26,6 +30,7 @@ CREATE TABLE IF NOT EXISTS boards (
 
 CREATE TABLE IF NOT EXISTS pairs (
   pairKey TEXT PRIMARY KEY,
+  simPool TEXT NOT NULL,
   bbVersion TEXT NOT NULL,
   rowBoardHash TEXT NOT NULL,
   colBoardHash TEXT NOT NULL,
@@ -46,6 +51,7 @@ CREATE INDEX IF NOT EXISTS idx_pairs_bb ON pairs(bbVersion);
 CREATE INDEX IF NOT EXISTS idx_boards_bucket ON boards(bbVersion, turn);
 
 CREATE TABLE IF NOT EXISTS matchups (
+  simPool TEXT NOT NULL,
   bbVersion TEXT NOT NULL,
   rowBoardId TEXT NOT NULL,
   colBoardId TEXT NOT NULL,
@@ -55,10 +61,8 @@ CREATE TABLE IF NOT EXISTS matchups (
   shellHash TEXT NOT NULL,
   turnRow INTEGER NOT NULL,
   turnCol INTEGER NOT NULL,
-  PRIMARY KEY (bbVersion, rowBoardId, colBoardId)
+  PRIMARY KEY (simPool, rowBoardId, colBoardId)
 );
-
-CREATE INDEX IF NOT EXISTS idx_matchups_bb ON matchups(bbVersion);
 """
 
 
@@ -69,7 +73,189 @@ class StrengthCache:
         self._conn = sqlite3.connect(str(self.path))
         self._conn.row_factory = sqlite3.Row
         self._conn.executescript(SCHEMA)
+        self._migrate_sim_pool()
         self._conn.commit()
+
+    def _user_version(self) -> int:
+        return int(self._conn.execute("PRAGMA user_version").fetchone()[0])
+
+    def _migrate_sim_pool(self) -> None:
+        if self._user_version() >= _SCHEMA_VERSION:
+            return
+        self._ensure_pairs_sim_pool()
+        self._rebuild_matchups_if_needed()
+        self.consolidate_sim_pools()
+        self._conn.execute("CREATE INDEX IF NOT EXISTS idx_pairs_pool ON pairs(simPool)")
+        self._conn.execute("CREATE INDEX IF NOT EXISTS idx_matchups_pool ON matchups(simPool)")
+        self._conn.execute(f"PRAGMA user_version = {_SCHEMA_VERSION}")
+
+    def _ensure_pairs_sim_pool(self) -> None:
+        cols = {r[1] for r in self._conn.execute("PRAGMA table_info(pairs)")}
+        if "simPool" in cols:
+            return
+        backup = self.path.with_name(self.path.stem + ".pre-sim-pool" + self.path.suffix)
+        if self.path.is_file() and not backup.is_file() and self.path.stat().st_size > 0:
+            dest = sqlite3.connect(str(backup))
+            try:
+                self._conn.backup(dest)
+            finally:
+                dest.close()
+        self._conn.execute("ALTER TABLE pairs ADD COLUMN simPool TEXT")
+
+    def _rebuild_matchups_if_needed(self) -> None:
+        row = self._conn.execute(
+            "SELECT sql FROM sqlite_master WHERE type='table' AND name='matchups'"
+        ).fetchone()
+        sql = (row[0] if row else "") or ""
+        compact = "".join(sql.split())
+        if "PRIMARY KEY (simPool,rowBoardId,colBoardId)" in compact:
+            return
+        self._conn.execute(
+            """
+            CREATE TABLE matchups_v2 (
+              simPool TEXT NOT NULL,
+              bbVersion TEXT NOT NULL,
+              rowBoardId TEXT NOT NULL,
+              colBoardId TEXT NOT NULL,
+              pairKey TEXT NOT NULL,
+              rowBoardHash TEXT NOT NULL,
+              colBoardHash TEXT NOT NULL,
+              shellHash TEXT NOT NULL,
+              turnRow INTEGER NOT NULL,
+              turnCol INTEGER NOT NULL,
+              PRIMARY KEY (simPool, rowBoardId, colBoardId)
+            )
+            """
+        )
+        if row is not None:
+            old_cols = {r[1] for r in self._conn.execute("PRAGMA table_info(matchups)")}
+            for src in self._conn.execute("SELECT * FROM matchups"):
+                d = dict(src)
+                bb = str(d.get("bbVersion") or "")
+                pool = str(d["simPool"]) if "simPool" in old_cols and d.get("simPool") else sim_pool_of(bb)
+                self._conn.execute(
+                    """
+                    INSERT OR REPLACE INTO matchups_v2(
+                      simPool, bbVersion, rowBoardId, colBoardId, pairKey,
+                      rowBoardHash, colBoardHash, shellHash, turnRow, turnCol
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        pool,
+                        bb or pool,
+                        d["rowBoardId"],
+                        d["colBoardId"],
+                        d["pairKey"],
+                        d["rowBoardHash"],
+                        d["colBoardHash"],
+                        d["shellHash"],
+                        int(d["turnRow"]),
+                        int(d["turnCol"]),
+                    ),
+                )
+        self._conn.execute("DROP TABLE matchups")
+        self._conn.execute("ALTER TABLE matchups_v2 RENAME TO matchups")
+        self._conn.execute("CREATE INDEX IF NOT EXISTS idx_matchups_pool ON matchups(simPool)")
+
+    def consolidate_sim_pools(self) -> dict[str, int]:
+        """Tag pairs with simPool and sum counts that share one assembled input.
+
+        Groups by (simPool, row/col/shell hash, assemblerVersion). The surviving
+        pairKey prefers the row whose file version already equals the pool id
+        (that hash is sha256(simPool | …)). Other file versions in the same pool
+        add their counts. Versions in different pools are never merged.
+        Placeholder hashes (``verify``) are retagged but not merged.
+        """
+        groups: dict[tuple, list[dict[str, Any]]] = defaultdict(list)
+        placeholders = 0
+        tag: list[tuple[str, str]] = []
+        for src in self._conn.execute("SELECT * FROM pairs"):
+            d = dict(src)
+            bb = str(d.get("bbVersion") or "")
+            pool = str(d.get("simPool") or "") or sim_pool_of(bb)
+            d["simPool"] = pool
+            hashes = (d.get("rowBoardHash"), d.get("colBoardHash"), d.get("shellHash"))
+            if any(h in (None, "", "verify") for h in hashes):
+                tag.append((pool, d["pairKey"]))
+                placeholders += 1
+                continue
+            key = (pool, d["rowBoardHash"], d["colBoardHash"], d["shellHash"], d["assemblerVersion"])
+            groups[key].append(d)
+
+        merged = 0
+        deleted = 0
+        for key, items in groups.items():
+            pool = key[0]
+            if len(items) == 1:
+                tag.append((pool, items[0]["pairKey"]))
+                continue
+            items.sort(key=lambda it: (0 if str(it.get("bbVersion")) == pool else 1, -int(it["sims"])))
+            keep = items[0]
+            sims = sum(int(it["sims"]) for it in items)
+            wins = sum(float(it["wins"]) for it in items)
+            ties = sum(float(it["ties"]) for it in items)
+            losses = sum(float(it["losses"]) for it in items)
+
+            def blend(name: str) -> float | None:
+                if sims <= 0:
+                    return None
+                acc = 0.0
+                seen = False
+                for it in items:
+                    if it.get(name) is None:
+                        continue
+                    seen = True
+                    acc += float(it[name]) * int(it["sims"])
+                return (acc / sims) if seen else None
+
+            self._conn.execute(
+                """
+                UPDATE pairs SET
+                  sims = ?, wins = ?, ties = ?, losses = ?,
+                  myDeathRate = ?, theirDeathRate = ?, avDamage = ?, elapsedMs = ?,
+                  simPool = ?
+                WHERE pairKey = ?
+                """,
+                (
+                    sims,
+                    wins,
+                    ties,
+                    losses,
+                    blend("myDeathRate"),
+                    blend("theirDeathRate"),
+                    blend("avDamage"),
+                    blend("elapsedMs"),
+                    pool,
+                    keep["pairKey"],
+                ),
+            )
+            for extra in items[1:]:
+                self._conn.execute("DELETE FROM pairs WHERE pairKey = ?", (extra["pairKey"],))
+                deleted += 1
+            merged += 1
+        if tag:
+            self._conn.executemany(
+                "UPDATE pairs SET simPool = ? WHERE pairKey = ?",
+                tag,
+            )
+        self._conn.commit()
+        return {"groupsMerged": merged, "rowsDeleted": deleted, "placeholders": placeholders}
+
+    def median_elapsed_ms(self) -> float | None:
+        cur = self._conn.execute(
+            """
+            SELECT elapsedMs FROM pairs
+            WHERE elapsedMs IS NOT NULL AND elapsedMs > 0
+            ORDER BY elapsedMs
+            LIMIT 1
+            OFFSET (
+              SELECT COUNT(*) / 2 FROM pairs
+              WHERE elapsedMs IS NOT NULL AND elapsedMs > 0
+            )
+            """
+        )
+        row = cur.fetchone()
+        return float(row[0]) if row else None
 
     def close(self) -> None:
         self._conn.close()
@@ -142,19 +328,22 @@ class StrengthCache:
         their_death_rate: float | None,
         av_damage: float | None,
         elapsed_ms: float | None,
+        sim_pool: str | None = None,
     ) -> dict[str, Any]:
         """Add counts into an existing row (or insert). Rates re-averaged by sims."""
+        pool = sim_pool or sim_pool_of(bb_version)
         old = self.get_pair(pair_key)
         if old is None:
             self._conn.execute(
                 """
                 INSERT INTO pairs(
-                  pairKey, bbVersion, rowBoardHash, colBoardHash, shellHash, assemblerVersion,
+                  pairKey, simPool, bbVersion, rowBoardHash, colBoardHash, shellHash, assemblerVersion,
                   sims, wins, ties, losses, myDeathRate, theirDeathRate, avDamage, elapsedMs, createdAt
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     pair_key,
+                    pool,
                     bb_version,
                     row_board_hash,
                     col_board_hash,
@@ -196,6 +385,7 @@ class StrengthCache:
               theirDeathRate = ?,
               avDamage = ?,
               elapsedMs = ?,
+              simPool = ?,
               bbVersion = ?,
               rowBoardHash = ?,
               colBoardHash = ?,
@@ -212,6 +402,7 @@ class StrengthCache:
                 blend(old["theirDeathRate"], their_death_rate),
                 blend(old["avDamage"], av_damage),
                 blend(old["elapsedMs"], elapsed_ms),
+                pool,
                 bb_version,
                 row_board_hash,
                 col_board_hash,
@@ -233,6 +424,7 @@ class StrengthCache:
         shell_hash: str,
         result: dict[str, Any],
         assembler_version: str = ASSEMBLER_VERSION,
+        sim_pool: str | None = None,
     ) -> dict[str, Any]:
         counts = rates_to_counts(
             int(result.get("simulationCount") or 0),
@@ -247,6 +439,7 @@ class StrengthCache:
         return self.merge_pair(
             pair_key=pair_key,
             bb_version=bb_version,
+            sim_pool=sim_pool or sim_pool_of(bb_version),
             row_board_hash=row_board_hash,
             col_board_hash=col_board_hash,
             shell_hash=shell_hash,
@@ -269,27 +462,33 @@ class StrengthCache:
         col_board_hash: str,
         shell_hash: str,
         assembler_version: str = ASSEMBLER_VERSION,
+        sim_pool: str | None = None,
     ) -> dict[str, Any] | None:
+        pool = sim_pool or sim_pool_of(bb_version)
         cur = self._conn.execute(
             """
             SELECT * FROM pairs
-            WHERE bbVersion = ? AND rowBoardHash = ? AND colBoardHash = ?
+            WHERE simPool = ? AND rowBoardHash = ? AND colBoardHash = ?
               AND shellHash = ? AND assemblerVersion = ?
             LIMIT 1
             """,
-            (bb_version, row_board_hash, col_board_hash, shell_hash, assembler_version),
+            (pool, row_board_hash, col_board_hash, shell_hash, assembler_version),
         )
         row = cur.fetchone()
         return dict(row) if row else None
 
     def load_pair_index(self, bb_version: str) -> dict[tuple[str, str, str], dict[str, Any]]:
-        """Index pairs by (rowBoardHash, colBoardHash, shellHash) for one BB version."""
+        """Index pairs by (rowBoardHash, colBoardHash, shellHash) for one sim pool.
+
+        ``bb_version`` may be a file version; it is mapped to ``simPool`` first.
+        """
+        pool = sim_pool_of(bb_version)
         cur = self._conn.execute(
             """
             SELECT * FROM pairs
-            WHERE bbVersion = ? AND assemblerVersion = ? AND sims > 0
+            WHERE simPool = ? AND assemblerVersion = ? AND sims > 0
             """,
-            (bb_version, ASSEMBLER_VERSION),
+            (pool, ASSEMBLER_VERSION),
         )
         out: dict[tuple[str, str, str], dict[str, Any]] = {}
         for row in cur.fetchall():
@@ -300,30 +499,35 @@ class StrengthCache:
 
     def upsert_matchups(self, rows: Iterable[dict[str, Any]]) -> int:
         """Record which lineup fought which. Rates stay on ``pairs`` (keyed by pairKey)."""
-        payload = [
-            (
-                r["bbVersion"],
-                r["rowBoardId"],
-                r["colBoardId"],
-                r["pairKey"],
-                r["rowBoardHash"],
-                r["colBoardHash"],
-                r["shellHash"],
-                int(r["turnRow"]),
-                int(r["turnCol"]),
+        payload = []
+        for r in rows:
+            bb = str(r.get("bbVersion") or "")
+            pool = str(r.get("simPool") or sim_pool_of(bb))
+            payload.append(
+                (
+                    pool,
+                    bb or pool,
+                    r["rowBoardId"],
+                    r["colBoardId"],
+                    r["pairKey"],
+                    r["rowBoardHash"],
+                    r["colBoardHash"],
+                    r["shellHash"],
+                    int(r["turnRow"]),
+                    int(r["turnCol"]),
+                )
             )
-            for r in rows
-        ]
         if not payload:
             return 0
         self._conn.executemany(
             """
             INSERT INTO matchups(
-              bbVersion, rowBoardId, colBoardId, pairKey,
+              simPool, bbVersion, rowBoardId, colBoardId, pairKey,
               rowBoardHash, colBoardHash, shellHash, turnRow, turnCol
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(bbVersion, rowBoardId, colBoardId) DO UPDATE SET
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(simPool, rowBoardId, colBoardId) DO UPDATE SET
               pairKey=excluded.pairKey,
+              bbVersion=excluded.bbVersion,
               rowBoardHash=excluded.rowBoardHash,
               colBoardHash=excluded.colBoardHash,
               shellHash=excluded.shellHash,
@@ -340,8 +544,8 @@ class StrengthCache:
             cur = self._conn.execute("SELECT COUNT(*) FROM matchups")
         else:
             cur = self._conn.execute(
-                "SELECT COUNT(*) FROM matchups WHERE bbVersion = ?",
-                (bb_version,),
+                "SELECT COUNT(*) FROM matchups WHERE simPool = ?",
+                (sim_pool_of(bb_version),),
             )
         return int(cur.fetchone()[0])
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import math
 import os
+import shutil
 from collections import defaultdict
 from pathlib import Path
 from typing import Any, Callable
@@ -46,12 +47,28 @@ from .percentile import (
     se2_of_s,
 )
 from .pool import Board, bucket_boards, collect_boards, load_turns
+from .sim_pools import latest_installed_member, member_versions, sim_pool_of
 from ._paths import DEFAULT_CACHE, DEFAULT_EXE, DEFAULT_TURNS, REPO, default_diag_roots
 
 
 def strength_out_path(bb_version: str, root: Path | None = None) -> Path:
     base = root or (REPO / "data" / "strength")
-    return base / bb_version / "strength.jsonl"
+    return base / sim_pool_of(bb_version) / "strength.jsonl"
+
+
+def preserve_pre_pool_output(out_path: Path) -> Path | None:
+    """Copy a file-version strength.jsonl aside before the pooled file replaces it."""
+    if not out_path.is_file():
+        return None
+    backup = out_path.with_name("strength.pre-sim-pool.jsonl")
+    if backup.is_file():
+        return backup
+    with out_path.open(encoding="utf-8") as f:
+        line = f.readline()
+    if '"simPool"' in line:
+        return None
+    shutil.copy2(out_path, backup)
+    return backup
 
 
 def build_score_map(
@@ -176,14 +193,15 @@ def ensure_pairs(
 ) -> dict[str, Any]:
     """Backfill per-turn L0 matrices; optionally L1 cross-turn unions."""
     log = progress or (lambda m: print(m, flush=True))
+    pool = sim_pool_of(bb_version)
     buckets = bucket_boards(boards)
     # L0
     l0 = backfill_version(
         boards,
         cache,
-        bb_version=bb_version,
+        bb_version=pool,
         exe=exe,
-        bb_map={bb_version: bb_dir},
+        bb_dir=bb_dir,
         k=k,
         target_sims=target_sims,
         iterations=iterations,
@@ -194,18 +212,18 @@ def ensure_pairs(
     )
     l1_reports: list[dict[str, Any]] = []
     if fill_l1 and L1_ENABLED:
-        turns = sorted({t for (v, t) in buckets if v == bb_version})
+        turns = sorted({t for (v, t) in buckets if v == pool})
         panels: dict[int, set[str]] = {}
         for t in turns:
-            bl = buckets[(bb_version, t)]
-            panels[t] = set(build_panel(bl, bb_version=bb_version, turn=t, k=k).board_ids)
+            bl = buckets[(pool, t)]
+            panels[t] = set(build_panel(bl, bb_version=pool, turn=t, k=k).board_ids)
 
         # Only fill L1 cross-turn pairs for turns where some leave-one-game
         # candidate would fall below G_min at L0 (design §3.3). Turns 1–12
         # with ≥20 games almost never need this; avoid O(N²) union blow-up.
         thin_turns: list[int] = []
         for t in turns:
-            bl = buckets[(bb_version, t)]
+            bl = buckets[(pool, t)]
             games = {b.game_id for b in bl}
             # worst-case leave-one-game G = |games|-1
             if len(games) - 1 < G_MIN:
@@ -213,14 +231,14 @@ def ensure_pairs(
 
         if not thin_turns:
             log("L1 fill skipped: all turns have leave-one-game G ≥ G_min")
-        pair_index = cache.load_pair_index(bb_version) if thin_turns else None
+        pair_index = cache.load_pair_index(pool) if thin_turns else None
         for t in thin_turns:
             nearby = []
             panel_ids: set[str] = set()
             for tt in (t - 1, t, t + 1):
-                if (bb_version, tt) not in buckets:
+                if (pool, tt) not in buckets:
                     continue
-                nearby.extend(buckets[(bb_version, tt)])
+                nearby.extend(buckets[(pool, tt)])
                 panel_ids |= panels.get(tt, set())
             if not nearby or not panel_ids:
                 continue
@@ -230,7 +248,7 @@ def ensure_pairs(
             links: list[dict[str, Any]] = []
             jobs = jobs_for_pairs(
                 pairs,
-                bb_version=bb_version,
+                bb_version=pool,
                 cache=cache,
                 target_sims=target_sims,
                 pair_index=pair_index,
@@ -255,7 +273,7 @@ def ensure_pairs(
                     cache,
                     exe=exe,
                     bb_dir=bb_dir,
-                    bb_version=bb_version,
+                    bb_version=pool,
                     iterations=iterations,
                     max_duration=max_duration,
                     threads=threads,
@@ -315,6 +333,7 @@ def evaluate_candidate(
         "turn": cand.turn,
         "side": cand.side,
         "bbVersion": cand.bb_version,
+        "simPool": cand.sim_pool,
         "S": None if core is None else core["S"],
         "percentile": None if core is None else core["percentile"],
         "ci95": None,
@@ -384,12 +403,14 @@ def run_percentile(
     progress: Callable[[str], None] | None = None,
 ) -> dict[str, Any]:
     log = progress or (lambda m: print(m, flush=True))
+    pool = sim_pool_of(bb_version)
     turns_by = load_turns(turns_jsonl or DEFAULT_TURNS)
     max_turn = max(turns) if turns else 99
     boards = collect_boards(
         roots or default_diag_roots(),
-        bb_version,
+        pool,
         turns_by,
+        versions=member_versions(pool),
         max_turn=max_turn,
         include_opponent=INCLUDE_OPPONENT_BOARDS and not player_only,
     )
@@ -407,9 +428,10 @@ def run_percentile(
     cache_path = cache_path or DEFAULT_CACHE
     exe = exe or DEFAULT_EXE
     bb_map = bb_map or load_bb_map()
-    bb_dir = bb_map.get(bb_version)
+    dll_ver = latest_installed_member(pool, bb_map)
+    bb_dir = bb_map.get(dll_ver) if dll_ver else None
     if not bb_dir or not os.path.isfile(os.path.join(bb_dir, "BobsBuddy.dll")):
-        raise FileNotFoundError(f"no BobsBuddy.dll for {bb_version}: {bb_dir}")
+        raise FileNotFoundError(f"no BobsBuddy.dll for simPool {pool}: {bb_dir}")
 
     fill_report: dict[str, Any] | None = None
     with StrengthCache(cache_path) as cache:
@@ -418,7 +440,7 @@ def run_percentile(
             fill_report = ensure_pairs(
                 boards,
                 cache,
-                bb_version=bb_version,
+                bb_version=pool,
                 exe=Path(exe),
                 bb_dir=bb_dir,
                 k=k,
@@ -433,11 +455,11 @@ def run_percentile(
 
         buckets = bucket_boards(boards)
         by_turn: dict[int, list[Board]] = {
-            t: bl for (v, t), bl in buckets.items() if v == bb_version
+            t: bl for (v, t), bl in buckets.items() if v == pool
         }
         panels: dict[int, set[str]] = {}
         for t, bl in by_turn.items():
-            panels[t] = set(build_panel(bl, bb_version=bb_version, turn=t, k=k).board_ids)
+            panels[t] = set(build_panel(bl, bb_version=pool, turn=t, k=k).board_ids)
 
         # L1 (±1 turn) only for turns whose leave-one-game pool is below G_min.
         # A thin late turn must not pull every earlier turn into the cross-turn matrix.
@@ -455,7 +477,7 @@ def run_percentile(
             boards,
             panels,
             cache,
-            bb_version=bb_version,
+            bb_version=pool,
             target_sims=target_sims,
             turn_slack=slack,
             slack_turns=thin_turns if slack else set(),
@@ -464,10 +486,10 @@ def run_percentile(
             log(f"score map still missing {len(missing)} pairs; running top-up batch")
             jobs = jobs_for_pairs(
                 missing,
-                bb_version=bb_version,
+                bb_version=pool,
                 cache=cache,
                 target_sims=target_sims,
-                pair_index=cache.load_pair_index(bb_version),
+                pair_index=cache.load_pair_index(pool),
             )
             if jobs:
                 execute_jobs(
@@ -475,7 +497,7 @@ def run_percentile(
                     cache,
                     exe=Path(exe),
                     bb_dir=bb_dir,
-                    bb_version=bb_version,
+                    bb_version=pool,
                     iterations=iterations,
                     max_duration=max_duration,
                     threads=threads,
@@ -485,7 +507,7 @@ def run_percentile(
                     boards,
                     panels,
                     cache,
-                    bb_version=bb_version,
+                    bb_version=pool,
                     target_sims=target_sims,
                     turn_slack=slack,
                     slack_turns=thin_turns if slack else set(),
@@ -519,16 +541,20 @@ def run_percentile(
                 )
             )
 
-    out_path = out_path or strength_out_path(bb_version)
+    out_path = out_path or strength_out_path(pool)
+    preserved = preserve_pre_pool_output(out_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     with out_path.open("w", encoding="utf-8") as f:
         for r in rows:
             f.write(json.dumps(r, ensure_ascii=False) + "\n")
 
     summary = {
+        "simPool": pool,
         "bbVersion": bb_version,
+        "dllVersion": dll_ver,
         "nCandidates": len(rows),
         "out": str(out_path),
+        "preservedPrePool": str(preserved) if preserved else None,
         "missingAfter": len(missing),
         "levels": _count_by(rows, "level"),
         "nWide": sum(1 for r in rows if "wide" in (r.get("flags") or [])),

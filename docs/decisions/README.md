@@ -37,7 +37,8 @@
 | [ADR-0008](0008-tuanzi-capture-with-record-crosscheck.md) | 个人采集以团子版 HDT + 对战记录对照为主 | accepted（第 4 条被 ADR-0009 取代） |
 | [ADR-0009](0009-allow-disconnect-reconstruct-results.md) | 采集期允许拔线，拔线回合的战果由上下文还原 | accepted |
 | [ADR-0010](0010-hdt-input-dump-as-primary-source.md) | 以 HDT `_input` 反射转储为主数据源，实体快照为后备 | accepted |
-| [ADR-0011](0011-strength-pool-round-robin.md) | 战力分位采用"同版本同回合、留一局循环赛 + 确定性参照面板" | accepted |
+| [ADR-0011](0011-strength-pool-round-robin.md) | 战力分位采用留一局循环赛 + 确定性参照面板 | accepted（分桶键被 ADR-0015 取代） |
 | [ADR-0012](0012-board-render-side-unit.md) | 阵容图以无状态单侧渲染为单元，允许本机 HDT 贴图 | accepted |
 | [ADR-0013](0013-offline-static-review-html.md) | 赛后复盘原型以离线静态 HTML 交付 | accepted |
 | [ADR-0014](0014-relax-p3-exit-width.md) | P3 退出标准第 1 条放宽聚类 bootstrap 宽度门槛 | accepted |
+| [ADR-0015](0015-sim-pool-by-compat.md) | 战力参照池按模拟池分组，不按 BB 文件版本各成一桶 | accepted |

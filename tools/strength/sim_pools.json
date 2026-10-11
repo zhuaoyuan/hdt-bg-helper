@@ -1,0 +1,34 @@
+{
+  "versions": [
+    {
+      "bbVersion": "1.78.1.0",
+      "simPool": "1.78.1.0",
+      "joinedAt": "2026-10-11",
+      "evidence": "未测试，单独成池"
+    },
+    {
+      "bbVersion": "1.80.1.0",
+      "simPool": "1.80.1.0",
+      "joinedAt": "2026-10-11",
+      "evidence": "未测试，单独成池"
+    },
+    {
+      "bbVersion": "1.81.2.0",
+      "simPool": "1.81.2.0",
+      "joinedAt": "2026-10-11",
+      "evidence": "未测试，单独成池"
+    },
+    {
+      "bbVersion": "1.85.0.0",
+      "simPool": "1.85.0.0",
+      "joinedAt": "2026-10-11",
+      "evidence": "建池版本"
+    },
+    {
+      "bbVersion": "1.88.6.0",
+      "simPool": "1.85.0.0",
+      "joinedAt": "2026-10-11",
+      "evidence": "docs/facts/replay-roundtrip.md §3.2"
+    }
+  ]
+}

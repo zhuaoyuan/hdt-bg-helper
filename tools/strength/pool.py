@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Collect ready boards into (bbVersion, turn) buckets; drop ghosts / duos."""
+"""Collect ready boards into (simPool, turn) buckets; drop ghosts / duos."""
 from __future__ import annotations
 
 import sys
@@ -15,6 +15,7 @@ if str(_TOOLS) not in sys.path:
 from standard_layer.combat import discover_games, iter_game_combats, load_meta  # noqa: E402
 
 from .assembler import board_hash, shell_hash  # noqa: E402
+from .sim_pools import sim_pool_of  # noqa: E402
 from ._paths import default_diag_roots  # noqa: E402
 
 
@@ -65,7 +66,12 @@ class Board:
     is_ghost: bool
     status: str
     game_dir: str
+    sim_pool: str = ""
     label: dict = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        if not self.sim_pool:
+            self.sim_pool = sim_pool_of(self.bb_version)
 
     def to_row(self) -> dict[str, Any]:
         return {
@@ -86,13 +92,19 @@ def collect_boards(
     bb_version: str,
     turns_by: dict[tuple[str, int], dict] | None = None,
     *,
+    versions: set[str] | list[str] | None = None,
     max_turn: int | None = None,
     include_opponent: bool = True,
     require_ready: bool = True,
 ) -> list[Board]:
-    """Pool units: ready solo turns with _input; Opponent excludes ghosts."""
+    """Pool units: ready solo turns with _input; Opponent excludes ghosts.
+
+    ``versions`` collects every listed file version (a sim pool's members).
+    When omitted, only ``bb_version`` is collected.
+    """
     roots = roots if roots is not None else default_diag_roots()
     turns_by = turns_by or {}
+    allowed = {str(v) for v in versions} if versions is not None else {str(bb_version)}
     games = discover_games(roots)
     boards: list[Board] = []
 
@@ -101,7 +113,8 @@ def collect_boards(
         bb = (meta.get("bobsBuddy") or {}).get("fileVersion") or (meta.get("bobsBuddy") or {}).get(
             "version"
         )
-        if str(bb) != bb_version:
+        actual = str(bb or "")
+        if actual not in allowed:
             continue
         if meta.get("isBattlegroundsDuosMatch"):
             continue
@@ -162,7 +175,8 @@ def collect_boards(
                         game_id=gid,
                         turn=int(turn),
                         side=side,
-                        bb_version=bb_version,
+                        bb_version=actual,
+                        sim_pool=sim_pool_of(actual),
                         input=inp,
                         board_hash=board_hash(inp, side),
                         shell_hash=shell_hash(inp),
@@ -176,10 +190,10 @@ def collect_boards(
 
 
 def bucket_boards(boards: list[Board]) -> dict[tuple[str, int], list[Board]]:
-    """Key = (bbVersion, turn)."""
+    """Key = (simPool, turn)."""
     out: dict[tuple[str, int], list[Board]] = defaultdict(list)
     for b in boards:
-        out[(b.bb_version, b.turn)].append(b)
+        out[(b.sim_pool, b.turn)].append(b)
     return dict(out)
 
 

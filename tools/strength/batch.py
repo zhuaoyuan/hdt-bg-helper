@@ -18,6 +18,7 @@ from .cache import StrengthCache
 from .config import ITERATIONS, MAX_DURATION_MS, PANEL_GAMES
 from .panel import Panel, build_panel, needed_pairs, needed_pairs_for_game
 from .pool import Board, bucket_boards
+from .sim_pools import latest_installed_member, sim_pool_of
 from ._paths import DEFAULT_BB_MAP, DEFAULT_EXE, expand
 
 
@@ -89,6 +90,7 @@ def make_pair_job(
 def matchup_from_boards(row: Board, col: Board, pair: dict[str, Any]) -> dict[str, Any]:
     """Identity row for one directed lineup fight. Rates stay on ``pairs``."""
     return {
+        "simPool": row.sim_pool,
         "bbVersion": row.bb_version,
         "rowBoardId": row.board_id,
         "colBoardId": col.board_id,
@@ -292,7 +294,8 @@ def execute_jobs(
         sh = shell_hash(pj.assembled)
         cache.merge_from_sim_result(
             pair_key=pj.pair_key,
-            bb_version=bb_version,
+            bb_version=pj.row.bb_version,
+            sim_pool=sim_pool_of(bb_version),
             row_board_hash=pj.row.board_hash,
             col_board_hash=pj.col.board_hash,
             shell_hash=sh,
@@ -354,6 +357,7 @@ def backfill_bucket(
     hits = total_needed - len(jobs)
     hit_rate = (hits / total_needed) if total_needed else 1.0
     info = {
+        "simPool": sim_pool_of(bb_version),
         "bbVersion": bb_version,
         "turn": turn,
         "nBoards": len(boards),
@@ -385,6 +389,28 @@ def backfill_bucket(
     return info
 
 
+def resolve_bb_dir(
+    bb_version: str,
+    bb_map: dict[str, str] | None,
+    bb_dir: str | None = None,
+) -> tuple[str, str, str]:
+    """Return (simPool, dll file version, directory containing BobsBuddy.dll)."""
+    pool = sim_pool_of(bb_version)
+    bb_map = bb_map or load_bb_map()
+    if bb_dir:
+        dll_ver = bb_version
+        for ver, directory in bb_map.items():
+            if os.path.normcase(directory) == os.path.normcase(bb_dir):
+                dll_ver = ver
+                break
+    else:
+        dll_ver = latest_installed_member(pool, bb_map) or ""
+        bb_dir = bb_map.get(dll_ver) if dll_ver else None
+    if not bb_dir or not os.path.isfile(os.path.join(bb_dir, "BobsBuddy.dll")):
+        raise FileNotFoundError(f"no BobsBuddy.dll for simPool {pool} ({bb_version}): {bb_dir}")
+    return pool, dll_ver, bb_dir
+
+
 def backfill_version(
     boards: list[Board],
     cache: StrengthCache,
@@ -392,6 +418,7 @@ def backfill_version(
     bb_version: str,
     exe: Path | None = None,
     bb_map: dict[str, str] | None = None,
+    bb_dir: str | None = None,
     turns: list[int] | None = None,
     k: int = PANEL_GAMES,
     target_sims: int = ITERATIONS,
@@ -403,27 +430,24 @@ def backfill_version(
 ) -> dict[str, Any]:
     log = progress or (lambda m: print(m, flush=True))
     exe = exe or DEFAULT_EXE
-    bb_map = bb_map or load_bb_map()
-    bb_dir = bb_map.get(bb_version)
-    if not bb_dir or not os.path.isfile(os.path.join(bb_dir, "BobsBuddy.dll")):
-        raise FileNotFoundError(f"no BobsBuddy.dll for {bb_version}: {bb_dir}")
+    pool, dll_ver, bb_dir = resolve_bb_dir(bb_version, bb_map, bb_dir)
     if not Path(exe).is_file():
         raise FileNotFoundError(f"ReplaySim exe missing: {exe}")
 
     buckets = bucket_boards(boards)
     reports = []
-    pair_index = cache.load_pair_index(bb_version)
+    pair_index = cache.load_pair_index(pool)
     for (ver, turn), b_list in sorted(buckets.items()):
-        if ver != bb_version:
+        if ver != pool:
             continue
         if turns is not None and turn not in turns:
             continue
-        log(f"bucket {ver} t{turn}: {len(b_list)} boards")
+        log(f"bucket {pool} t{turn}: {len(b_list)} boards (dll {dll_ver})")
         reports.append(
             backfill_bucket(
                 b_list,
                 cache,
-                bb_version=ver,
+                bb_version=pool,
                 turn=turn,
                 exe=Path(exe),
                 bb_dir=bb_dir,
@@ -438,7 +462,9 @@ def backfill_version(
             )
         )
     return {
+        "simPool": pool,
         "bbVersion": bb_version,
+        "dllVersion": dll_ver,
         "buckets": reports,
         "pairsMissing": sum(r["pairsMissing"] for r in reports),
         "pairsNeeded": sum(r["pairsNeeded"] for r in reports),
@@ -468,18 +494,16 @@ def increment_game(
     dry_run: bool = False,
 ) -> dict[str, Any]:
     exe = exe or DEFAULT_EXE
-    bb_map = bb_map or load_bb_map()
-    bb_dir = bb_map.get(bb_version)
-    if not bb_dir or not os.path.isfile(os.path.join(bb_dir, "BobsBuddy.dll")):
-        raise FileNotFoundError(f"no BobsBuddy.dll for {bb_version}: {bb_dir}")
+    pool, dll_ver, resolved_dir = resolve_bb_dir(bb_version, bb_map, None)
+    bb_dir = resolved_dir
 
-    buckets = bucket_boards([b for b in boards if b.bb_version == bb_version])
+    buckets = bucket_boards([b for b in boards if b.sim_pool == pool])
     reports = []
-    pair_index = cache.load_pair_index(bb_version)
+    pair_index = cache.load_pair_index(pool)
     for (ver, turn), b_list in sorted(buckets.items()):
         if not any(b.game_id == game_id for b in b_list):
             continue
-        panel = build_panel(b_list, bb_version=ver, turn=turn, k=k)
+        panel = build_panel(b_list, bb_version=pool, turn=turn, k=k)
         cache.upsert_boards(b.to_row() for b in b_list)
         links: list[dict[str, Any]] = []
         jobs = plan_jobs(
@@ -509,7 +533,7 @@ def increment_game(
                 cache,
                 exe=Path(exe),
                 bb_dir=bb_dir,
-                bb_version=ver,
+                bb_version=pool,
                 iterations=iterations,
                 max_duration=max_duration,
                 threads=threads,
@@ -520,4 +544,4 @@ def increment_game(
             info["wallSec"] = 0.0
             info["ok"] = 0
         reports.append(info)
-    return {"bbVersion": bb_version, "gameId": game_id, "buckets": reports}
+    return {"simPool": pool, "dllVersion": dll_ver, "bbVersion": bb_version, "gameId": game_id, "buckets": reports}

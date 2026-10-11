@@ -82,6 +82,7 @@ python spikes/replay-harness/tools/roundtrip.py --root data/BgHelperDiag --versi
 
 - **默认仍按采集时 `fileVersion` 选 DLL**（1.78→1.85 已证明会偏）。
 - **1.85 场面用 1.88.6 重算五率：本批可视为无显著差异**；这不等于可以启用 L2 / 把两版本场面混进同一战力参照池（Q-016 / ADR-0011 仍关；池分布与冷启动另论）。
+- **2026-10-11：** 上一条里「不混参照池」的策略被 [ADR-0015](../decisions/0015-sim-pool-by-compat.md) 取代。本节的测量（100/100，以及 §3.1 的 3 场显著偏差）不改。成员表见 [`sim-pool-members.md`](sim-pool-members.md)。
 - 1.80.1 / 1.81.2 本机仍缺 DLL 时跳过。
 ## 4. Q-013：未赋值标量扰动
 

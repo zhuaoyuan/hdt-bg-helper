@@ -27,6 +27,7 @@ agent 读到提示词后按其中的步骤执行。每份提示词都默认 agen
 | [`verify-data.md`](verify-data.md) | 检查采集数据质量，做往返验证 |
 | [`review.md`](review.md) | 提交前自审 |
 | [`version-upgrade.md`](version-upgrade.md) | HDT / Bob's Buddy / 游戏版本更新后的同步与复核 |
+| [`sim-pool-versions.md`](sim-pool-versions.md) | 模拟池版本表：兼容测试、并池、按池重刷对战与分位 |
 | [`session-handoff.md`](session-handoff.md) | 会话收尾交接 |
 | [`p3-t2-batch-sim.md`](p3-t2-batch-sim.md) | **P3-T2** 专用：ReplaySim 迁移、入池/面板/缓存/增量批跑 |
 | [`p3-t3-percentile.md`](p3-t3-percentile.md) | **P3-T3** 专用：循环赛分位、聚类 bootstrap、放宽阶梯、退出统计 |

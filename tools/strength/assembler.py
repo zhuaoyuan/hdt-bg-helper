@@ -176,9 +176,16 @@ def cross_shell_hash(row_input: dict) -> str:
     )
 
 
-def pair_key(bb_version: str, assembled: dict, assembler_version: str = ASSEMBLER_VERSION) -> str:
-    """sha256(bbVersion | assemblerVersion | normalized assembled Input)."""
-    payload = f"{bb_version}|{assembler_version}|{stable_json(assembled)}"
+def pair_key(sim_pool: str, assembled: dict, assembler_version: str = ASSEMBLER_VERSION) -> str:
+    """sha256(simPool | assemblerVersion | normalized assembled Input).
+
+    A file version is mapped through ``sim_pools.json`` first, so two
+    compatible DLLs share one key. The DLL file version is not part of the key.
+    """
+    from .sim_pools import sim_pool_of
+
+    pool = sim_pool_of(sim_pool)
+    payload = f"{pool}|{assembler_version}|{stable_json(assembled)}"
     return sha256_hex(payload)
 
 

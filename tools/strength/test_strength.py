@@ -91,13 +91,19 @@ class AssemblerTests(unittest.TestCase):
         c2_reordered = {k: c2[k] for k in reversed(list(c2.keys()))}
         self.assertEqual(k1, pair_key("1.85.0.0", c2_reordered))
 
-    def test_pair_key_changes_with_bb_or_assembler(self):
+    def test_pair_key_uses_sim_pool_not_file_version(self):
+        from tools.strength.sim_pools import sim_pool_of
+
         a = _mini_input("A", "B")
         b = _mini_input("C", "D")
         cross = make_cross_input(a, b)
-        k = pair_key("1.85.0.0", cross)
-        self.assertNotEqual(k, pair_key("1.81.2.0", cross))
-        self.assertNotEqual(k, pair_key("1.85.0.0", cross, assembler_version="999"))
+        self.assertEqual(sim_pool_of("1.88.6.0"), "1.85.0.0")
+        self.assertEqual(sim_pool_of("1.78.1.0"), "1.78.1.0")
+        self.assertNotEqual(sim_pool_of("1.78.1.0"), "1.85.0.0")
+        pooled = pair_key("1.88.6.0", cross)
+        self.assertEqual(pooled, pair_key("1.85.0.0", cross))
+        self.assertNotEqual(pooled, pair_key("1.81.2.0", cross))
+        self.assertNotEqual(pooled, pair_key("1.85.0.0", cross, assembler_version="999"))
 
     def test_graft_controlled(self):
         src = _mini_input("X", "Y")
@@ -168,6 +174,105 @@ class CacheMergeTests(unittest.TestCase):
                 p = cache.get_pair("k1")
                 assert p is not None
                 self.assertAlmostEqual(float(p["myDeathRate"]), 0.2)
+
+    def test_same_input_counts_merge_across_file_versions(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            db = Path(tmp) / "c.sqlite"
+            with StrengthCache(db) as cache:
+                cache.merge_pair(
+                    pair_key="k185",
+                    bb_version="1.85.0.0",
+                    row_board_hash="r",
+                    col_board_hash="c",
+                    shell_hash="s",
+                    assembler_version=ASSEMBLER_VERSION,
+                    sims=100,
+                    wins=40,
+                    ties=10,
+                    losses=50,
+                    my_death_rate=0.1,
+                    their_death_rate=0.0,
+                    av_damage=1.0,
+                    elapsed_ms=10.0,
+                )
+                cache.merge_pair(
+                    pair_key="k188",
+                    bb_version="1.88.6.0",
+                    row_board_hash="r",
+                    col_board_hash="c",
+                    shell_hash="s",
+                    assembler_version=ASSEMBLER_VERSION,
+                    sims=50,
+                    wins=25,
+                    ties=0,
+                    losses=25,
+                    my_death_rate=0.2,
+                    their_death_rate=0.0,
+                    av_damage=3.0,
+                    elapsed_ms=20.0,
+                )
+                cache.merge_pair(
+                    pair_key="k178",
+                    bb_version="1.78.1.0",
+                    row_board_hash="r",
+                    col_board_hash="c",
+                    shell_hash="s",
+                    assembler_version=ASSEMBLER_VERSION,
+                    sims=10,
+                    wins=10,
+                    ties=0,
+                    losses=0,
+                    my_death_rate=0.0,
+                    their_death_rate=0.0,
+                    av_damage=1.0,
+                    elapsed_ms=5.0,
+                )
+                report = cache.consolidate_sim_pools()
+                self.assertEqual(report["groupsMerged"], 1)
+                self.assertEqual(report["rowsDeleted"], 1)
+                kept = cache.get_pair("k185")
+                assert kept is not None
+                self.assertEqual(int(kept["sims"]), 150)
+                self.assertEqual(kept["simPool"], "1.85.0.0")
+                self.assertIsNone(cache.get_pair("k188"))
+                alone = cache.get_pair("k178")
+                assert alone is not None
+                self.assertEqual(alone["simPool"], "1.78.1.0")
+                self.assertEqual(int(alone["sims"]), 10)
+
+
+class PoolJoinTests(unittest.TestCase):
+    def test_join_refuses_when_check_failed(self):
+        import json
+        import shutil
+
+        from tools.strength.sim_pools import TABLE_PATH, pool_join
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            facts = root / "facts"
+            facts.mkdir()
+            evidence = facts / "note.md"
+            evidence.write_text("candidate 1.99.0.0 was not accepted\n", encoding="utf-8")
+            check = root / "check.json"
+            check.write_text(
+                json.dumps(
+                    {"passed": False, "candidate": "1.99.0.0", "simPool": "1.85.0.0"}
+                ),
+                encoding="utf-8",
+            )
+            table = root / "sim_pools.json"
+            shutil.copy(TABLE_PATH, table)
+            before = table.read_text(encoding="utf-8")
+            ok = pool_join(
+                candidate="1.99.0.0",
+                sim_pool="1.85.0.0",
+                evidence=evidence,
+                check_path=check,
+                table_path=table,
+            )
+            self.assertFalse(ok)
+            self.assertEqual(table.read_text(encoding="utf-8"), before)
 
 
 class MatchupCacheTests(unittest.TestCase):
