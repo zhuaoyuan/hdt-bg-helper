@@ -46,6 +46,7 @@
 | [`positioning-keyword.md`](positioning-keyword.md) | 主线外：关键词/邻接/有限交换对 \(S\)（规则无 CI+；local_swap 同池 CI+）（2026-10-07） |
 | [`positioning-enumerate.md`](positioning-enumerate.md) | 主线外：T3/T4 分层抽样全排列；头部 20% 共性（贴近原序、略偏强左）（2026-10-07） |
 | [`strength-calibration.md`](strength-calibration.md) | P3-T1 校准：iterations / K / \(G_\text{min}\) / \(w_\text{relax}\) / L2（2026-10-05） |
+| [`damage-results-cap-q020.md`](damage-results-cap-q020.md) | Q-020：`damageResults` 在正的 `DamageCap` 上被截断；符号与平局为 0（2026-10-11） |
 | [`hdt-past-opponent-board-render.md`](hdt-past-opponent-board-render.md) | HDT 上次对手阵容叠加层实现；诊断 dump 是否足以离线渲染阵容图（2026-10-05） |
 | [`bobsbuddy-minion-enchantments.md`](bobsbuddy-minion-enchantments.md) | 随从附着附魔 → BB `Minion` 字段映射全表（上一份的附表） |
 | [`local-environment.md`](local-environment.md) | 所有者本机实际运行的 HDT 版本、数据目录、可用工具 |

@@ -12,12 +12,12 @@
 | --- | --- | --- | --- | --- | --- |
 | Q-002 | 能否通过反射读取 HDT 内部 `BobsBuddyInvoker._input`，作为对照基准或数据源？稳定性如何？ | 中 | **已跨至团子 HDT 1.58.9 / BB 1.88.6 采集成功**（2026-10-07：局 `177672`，8/8 Combat 有 Input+Output，`probeInitError` 空；Input/Player 顶层键相对 1.85 局无增减，见 `facts/diag-bb188-first-game-20261007.md`）。此前批：HDT 1.58.3→1.58.6，BB 1.78.1→1.85.0。P2-T1 主数据源（ADR-0010）。仍 investigating：**1.88.6 同版本 roundtrip 尚未跑**（`bb-dirs.json` 未登记）；升级冒烟仍要 `check_capture` + roundtrip | ADR-0010、`spikes/hdt-diag-logger/` | investigating |
 | Q-008 | 个人对局数据量能否支撑按"同补丁 + 同回合 + 同规则"筛选的参照池？需要多少局？ | 高 | 估算见 `research/q008-personal-data-volume.md`。**P3-T0 实测**：约 23 局时 bootstrap（场面重采样）中位宽 ≈12–14。**P3-T1 校准**：\(G_\text{min}=6\)；聚类 bootstrap 中位宽本批≈36 点（离散分位主导，见 `facts/strength-calibration.md`）。严格再按种族/畸变分桶仍不可行 | P3、`facts/strength-cross-p3t0.md`、`facts/strength-calibration.md` | investigating |
-| Q-020 | Bob's Buddy 的 `damageResults` 是否已被 `DamageCap` 截断？ | 高 | 少量真实配对：比较伤害样本与该 Input 的 `DamageCap`。若最大值从不超过上限，则 `design/R-score-policy-search.md` 的伤害项不做，只搜索平局权重 | R-score-policy-search | open |
 
 ## 已关闭
 
 | 编号 | 问题 | 结论 | 结论位置 |
 | --- | --- | --- | --- |
+| Q-020 | Bob's Buddy 的 `damageResults` 是否已被 `DamageCap` 截断？ | **是（上限为正时）。** 445 场 `DamageCap`∈{5,10,15} 没有任何样本绝对值超过上限；能明显高于上限的全胜会整表贴在 +上限上。上限为 0 的 42 场都会写出绝对值 >15 的样本。正=造成、负=受到、0 与平率一致；全胜不为 0。伤害系数取 0，不补伤害分位（2026-10-11） | `facts/damage-results-cap-q020.md` |
 | Q-015 | 交叉模拟迭代次数可降到多少？ | **默认 500。** E1：相对 4000 基线，500 满足 \|ΔQ\| p95≤3、Spearman(S)≥0.99、bootstrap 宽不增；250 未过。300 对 @20000 显示 4000 已贴近真值（2026-10-05） | `facts/strength-calibration.md`、`design/P3-T1-strength-engine.md` §3.9 |
 | Q-016 | 新 BB 版本冷启动能否用上一版本场面作参照（当前 DLL 重模拟）？ | **不能启用 L2。** E5：1.81.2 参照给 1.85 候选打分，\|ΔQ\| p95≈13.6 >5；与 Q-011 跨版本偏差一致。冷启动显示 `insufficient`（2026-10-05） | `facts/strength-calibration.md`、ADR-0011 |
 | Q-009 | 单场模拟 1.5–5 秒、占半数核心；P3 批量模拟的总耗时是否可接受？ | **可接受（按默认标准）。** 真实场面独立进程模拟 `elapsedMs` 中位 411 ms（261 场，max 1046 ms）；每局全部回合模拟合计 max ≈8 s，远低于「每局 ≤ 10 分钟」。一场一进程墙钟中位 ≈1.6 s/场，仍无局超预算（2026-10-05） | `facts/replay-roundtrip.md` §2 |
