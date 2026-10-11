@@ -36,3 +36,4 @@
 | [R-positioning-strength](R-positioning-strength.md) | 主线外：摆位策略对 \(S\) 增量（T3–T7，独立 spike） | implemented |
 | [R-positioning-keyword](R-positioning-keyword.md) | 主线外：关键词/邻接/有限交换摆位对 \(S\)（承接 Q-017） | implemented |
 | [R-positioning-enumerate](R-positioning-enumerate.md) | 主线外：T3/T4 分层抽样全排列 + 头部 20% 共性（Q-019） | implemented |
+| [R-progress-trend](R-progress-trend.md) | 主线外：当前模拟池对局战力与生存回合时序 | implemented |

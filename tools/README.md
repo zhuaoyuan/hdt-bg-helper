@@ -4,6 +4,7 @@
 | --- | --- |
 | `standard_layer/` | P2-T3：诊断记录 + 团子文本 → 每回合标准层表 + 质量报告 |
 | `board_render/` | P3-T6：无状态单侧阵容条 PNG（`render_side`）；本机可读 HDT Minion 贴图 |
+| `progress_view/` | 当前模拟池对局按时序的战力与生存回合（离线 HTML） |
 
 ## 标准层导入
 
