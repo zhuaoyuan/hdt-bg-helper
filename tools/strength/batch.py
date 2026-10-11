@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from . import ASSEMBLER_VERSION
-from .assembler import make_cross_input, pair_key, shell_hash
+from .assembler import cross_shell_hash, make_cross_input, pair_key, shell_hash
 from .cache import StrengthCache
 from .config import ITERATIONS, MAX_DURATION_MS, PANEL_GAMES
 from .panel import Panel, build_panel, needed_pairs, needed_pairs_for_game
@@ -86,6 +86,49 @@ def make_pair_job(
     )
 
 
+def matchup_from_boards(row: Board, col: Board, pair: dict[str, Any]) -> dict[str, Any]:
+    """Identity row for one directed lineup fight. Rates stay on ``pairs``."""
+    return {
+        "bbVersion": row.bb_version,
+        "rowBoardId": row.board_id,
+        "colBoardId": col.board_id,
+        "pairKey": pair["pairKey"],
+        "rowBoardHash": row.board_hash,
+        "colBoardHash": col.board_hash,
+        "shellHash": pair["shellHash"],
+        "turnRow": row.turn,
+        "turnCol": col.turn,
+    }
+
+
+def jobs_for_pairs(
+    pairs: list[tuple[Board, Board]],
+    *,
+    bb_version: str,
+    cache: StrengthCache,
+    target_sims: int,
+    pair_index: dict[tuple[str, str, str], dict[str, Any]] | None = None,
+    matchup_sink: list[dict[str, Any]] | None = None,
+) -> list[PairJob]:
+    """Pairs not already in cache. Hash-index hits are recorded as matchups and skipped."""
+    jobs: list[PairJob] = []
+    seen: set[str] = set()
+    for row, col in pairs:
+        if pair_index is not None:
+            sh = cross_shell_hash(row.input)
+            cached = pair_index.get((row.board_hash, col.board_hash, sh))
+            if cached is not None and sims_sufficient(int(cached["sims"]), target_sims):
+                if matchup_sink is not None:
+                    matchup_sink.append(matchup_from_boards(row, col, cached))
+                continue
+        j = make_pair_job(row, col, bb_version=bb_version, cache=cache, target_sims=target_sims)
+        if j is None or j.pair_key in seen:
+            continue
+        seen.add(j.pair_key)
+        jobs.append(j)
+    return jobs
+
+
 def plan_jobs(
     boards: list[Board],
     panel: Panel,
@@ -93,21 +136,22 @@ def plan_jobs(
     *,
     target_sims: int,
     game_id: str | None = None,
+    pair_index: dict[tuple[str, str, str], dict[str, Any]] | None = None,
+    matchup_sink: list[dict[str, Any]] | None = None,
 ) -> list[PairJob]:
     pairs = (
         needed_pairs_for_game(boards, panel, game_id)
         if game_id
         else needed_pairs(boards, panel)
     )
-    jobs: list[PairJob] = []
-    seen: set[str] = set()
-    for row, col in pairs:
-        j = make_pair_job(row, col, bb_version=panel.bb_version, cache=cache, target_sims=target_sims)
-        if j is None or j.pair_key in seen:
-            continue
-        seen.add(j.pair_key)
-        jobs.append(j)
-    return jobs
+    return jobs_for_pairs(
+        pairs,
+        bb_version=panel.bb_version,
+        cache=cache,
+        target_sims=target_sims,
+        pair_index=pair_index,
+        matchup_sink=matchup_sink,
+    )
 
 
 def binomial_se(p: float, n: int) -> float:
@@ -237,6 +281,7 @@ def execute_jobs(
         threads=threads,
     )
     ok_n = 0
+    linked: list[dict[str, Any]] = []
     for r in results:
         if not r.get("ok"):
             continue
@@ -244,15 +289,25 @@ def execute_jobs(
         pj = by_id.get(jid)
         if pj is None:
             continue
+        sh = shell_hash(pj.assembled)
         cache.merge_from_sim_result(
             pair_key=pj.pair_key,
             bb_version=bb_version,
             row_board_hash=pj.row.board_hash,
             col_board_hash=pj.col.board_hash,
-            shell_hash=shell_hash(pj.assembled),
+            shell_hash=sh,
             result=r,
         )
+        linked.append(
+            matchup_from_boards(
+                pj.row,
+                pj.col,
+                {"pairKey": pj.pair_key, "shellHash": sh},
+            )
+        )
         ok_n += 1
+    if linked:
+        cache.upsert_matchups(linked)
 
     return {
         "planned": len(pair_jobs),
@@ -279,10 +334,22 @@ def backfill_bucket(
     max_duration: int = MAX_DURATION_MS,
     threads: int | None = None,
     dry_run: bool = False,
+    pair_index: dict[tuple[str, str, str], dict[str, Any]] | None = None,
+    progress: Callable[[str], None] | None = None,
 ) -> dict[str, Any]:
     panel = build_panel(boards, bb_version=bb_version, turn=turn, k=k)
     cache.upsert_boards(b.to_row() for b in boards)
-    jobs = plan_jobs(boards, panel, cache, target_sims=target_sims)
+    links: list[dict[str, Any]] = []
+    jobs = plan_jobs(
+        boards,
+        panel,
+        cache,
+        target_sims=target_sims,
+        pair_index=pair_index,
+        matchup_sink=links,
+    )
+    if links:
+        cache.upsert_matchups(links)
     total_needed = len(needed_pairs(boards, panel))
     hits = total_needed - len(jobs)
     hit_rate = (hits / total_needed) if total_needed else 1.0
@@ -312,6 +379,7 @@ def backfill_bucket(
         iterations=iterations,
         max_duration=max_duration,
         threads=threads,
+        progress=progress,
     )
     info.update({k: run[k] for k in ("ran", "ok", "wallSec") if k in run})
     return info
@@ -344,6 +412,7 @@ def backfill_version(
 
     buckets = bucket_boards(boards)
     reports = []
+    pair_index = cache.load_pair_index(bb_version)
     for (ver, turn), b_list in sorted(buckets.items()):
         if ver != bb_version:
             continue
@@ -364,6 +433,8 @@ def backfill_version(
                 max_duration=max_duration,
                 threads=threads,
                 dry_run=dry_run,
+                pair_index=pair_index,
+                progress=log,
             )
         )
     return {
@@ -404,12 +475,24 @@ def increment_game(
 
     buckets = bucket_boards([b for b in boards if b.bb_version == bb_version])
     reports = []
+    pair_index = cache.load_pair_index(bb_version)
     for (ver, turn), b_list in sorted(buckets.items()):
         if not any(b.game_id == game_id for b in b_list):
             continue
         panel = build_panel(b_list, bb_version=ver, turn=turn, k=k)
         cache.upsert_boards(b.to_row() for b in b_list)
-        jobs = plan_jobs(b_list, panel, cache, target_sims=target_sims, game_id=game_id)
+        links: list[dict[str, Any]] = []
+        jobs = plan_jobs(
+            b_list,
+            panel,
+            cache,
+            target_sims=target_sims,
+            game_id=game_id,
+            pair_index=pair_index,
+            matchup_sink=links,
+        )
+        if links:
+            cache.upsert_matchups(links)
         needed = len(needed_pairs_for_game(b_list, panel, game_id))
         hits = needed - len(jobs)
         info = {

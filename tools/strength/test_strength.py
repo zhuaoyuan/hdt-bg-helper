@@ -170,6 +170,79 @@ class CacheMergeTests(unittest.TestCase):
                 self.assertAlmostEqual(float(p["myDeathRate"]), 0.2)
 
 
+class MatchupCacheTests(unittest.TestCase):
+    def test_index_hit_skips_job_and_records_matchup(self):
+        from tools.strength.assembler import cross_shell_hash
+        from tools.strength.batch import plan_jobs
+
+        row_inp = _mini_input("A", "B", turn=3)
+        col_inp = _mini_input("C", "D", turn=3)
+        row = _board("20261001_100000_aaaaaa", 3, "Player", row_inp)
+        col = _board("20261001_100001_bbbbbb", 3, "Player", col_inp)
+        with tempfile.TemporaryDirectory() as tmp:
+            with StrengthCache(Path(tmp) / "c.sqlite") as cache:
+                for a, b, key in ((row, col, "pk-ab"), (col, row, "pk-ba")):
+                    cache.merge_pair(
+                        pair_key=key,
+                        bb_version=a.bb_version,
+                        row_board_hash=a.board_hash,
+                        col_board_hash=b.board_hash,
+                        shell_hash=cross_shell_hash(a.input),
+                        assembler_version=ASSEMBLER_VERSION,
+                        sims=500,
+                        wins=250,
+                        ties=0,
+                        losses=250,
+                        my_death_rate=0.0,
+                        their_death_rate=0.0,
+                        av_damage=1.0,
+                        elapsed_ms=1.0,
+                    )
+                panel = build_panel([row, col], bb_version=row.bb_version, turn=3, k=30)
+                sink: list[dict] = []
+                jobs = plan_jobs(
+                    [row, col],
+                    panel,
+                    cache,
+                    target_sims=500,
+                    pair_index=cache.load_pair_index(row.bb_version),
+                    matchup_sink=sink,
+                )
+                self.assertEqual(jobs, [])
+                self.assertGreaterEqual(len(sink), 1)
+                cache.upsert_matchups(sink)
+                self.assertEqual(cache.matchup_count(row.bb_version), len(sink))
+                ids = {(r["rowBoardId"], r["colBoardId"]) for r in sink}
+                self.assertIn((row.board_id, col.board_id), ids)
+
+    def test_slack_turns_do_not_expand_fat_buckets(self):
+        from tools.strength.engine import build_score_map
+
+        boards = []
+        for turn, n in ((4, 8), (5, 3)):
+            for i in range(n):
+                gid = f"2026100{turn}_10000{i}_g{i}"
+                boards.append(_board(gid, turn, "Player", _mini_input("A", "B", turn=turn)))
+        panels = {}
+        for turn in (4, 5):
+            bl = [b for b in boards if b.turn == turn]
+            panels[turn] = set(build_panel(bl, bb_version="1.85.0.0", turn=turn, k=30).board_ids)
+        with tempfile.TemporaryDirectory() as tmp:
+            with StrengthCache(Path(tmp) / "c.sqlite") as cache:
+                _scores, missing = build_score_map(
+                    boards,
+                    panels,
+                    cache,
+                    bb_version="1.85.0.0",
+                    target_sims=500,
+                    turn_slack=1,
+                    slack_turns={5},
+                )
+        missing_turns = {(a.turn, b.turn) for a, b in missing}
+        self.assertTrue(any(t == (5, 4) or t == (5, 5) for t in missing_turns))
+        self.assertFalse(any(row_t == 4 and col_t != 4 for row_t, col_t in missing_turns))
+
+
 class GhostAndLeaveOneTests(unittest.TestCase):
     def test_ghost_detection(self):
         g = _mini_input("A", "B", opp_hero="TB_BaconShop_HERO_KelThuzad")

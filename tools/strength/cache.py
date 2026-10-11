@@ -44,6 +44,21 @@ CREATE TABLE IF NOT EXISTS pairs (
 
 CREATE INDEX IF NOT EXISTS idx_pairs_bb ON pairs(bbVersion);
 CREATE INDEX IF NOT EXISTS idx_boards_bucket ON boards(bbVersion, turn);
+
+CREATE TABLE IF NOT EXISTS matchups (
+  bbVersion TEXT NOT NULL,
+  rowBoardId TEXT NOT NULL,
+  colBoardId TEXT NOT NULL,
+  pairKey TEXT NOT NULL,
+  rowBoardHash TEXT NOT NULL,
+  colBoardHash TEXT NOT NULL,
+  shellHash TEXT NOT NULL,
+  turnRow INTEGER NOT NULL,
+  turnCol INTEGER NOT NULL,
+  PRIMARY KEY (bbVersion, rowBoardId, colBoardId)
+);
+
+CREATE INDEX IF NOT EXISTS idx_matchups_bb ON matchups(bbVersion);
 """
 
 
@@ -282,6 +297,53 @@ class StrengthCache:
             key = (d["rowBoardHash"], d["colBoardHash"], d["shellHash"])
             out[key] = d
         return out
+
+    def upsert_matchups(self, rows: Iterable[dict[str, Any]]) -> int:
+        """Record which lineup fought which. Rates stay on ``pairs`` (keyed by pairKey)."""
+        payload = [
+            (
+                r["bbVersion"],
+                r["rowBoardId"],
+                r["colBoardId"],
+                r["pairKey"],
+                r["rowBoardHash"],
+                r["colBoardHash"],
+                r["shellHash"],
+                int(r["turnRow"]),
+                int(r["turnCol"]),
+            )
+            for r in rows
+        ]
+        if not payload:
+            return 0
+        self._conn.executemany(
+            """
+            INSERT INTO matchups(
+              bbVersion, rowBoardId, colBoardId, pairKey,
+              rowBoardHash, colBoardHash, shellHash, turnRow, turnCol
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(bbVersion, rowBoardId, colBoardId) DO UPDATE SET
+              pairKey=excluded.pairKey,
+              rowBoardHash=excluded.rowBoardHash,
+              colBoardHash=excluded.colBoardHash,
+              shellHash=excluded.shellHash,
+              turnRow=excluded.turnRow,
+              turnCol=excluded.turnCol
+            """,
+            payload,
+        )
+        self._conn.commit()
+        return len(payload)
+
+    def matchup_count(self, bb_version: str | None = None) -> int:
+        if bb_version is None:
+            cur = self._conn.execute("SELECT COUNT(*) FROM matchups")
+        else:
+            cur = self._conn.execute(
+                "SELECT COUNT(*) FROM matchups WHERE bbVersion = ?",
+                (bb_version,),
+            )
+        return int(cur.fetchone()[0])
 
     def pair_rates(self, pair_key: str) -> dict[str, float] | None:
         p = self.get_pair(pair_key)

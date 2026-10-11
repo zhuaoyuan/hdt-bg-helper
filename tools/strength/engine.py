@@ -10,13 +10,12 @@ from pathlib import Path
 from typing import Any, Callable
 
 from . import ASSEMBLER_VERSION, __version__ as ENGINE_VERSION
-from .assembler import make_cross_input, pair_key, shell_hash as shell_hash_of
+from .assembler import cross_shell_hash, make_cross_input, pair_key
 from .batch import (
-    PairJob,
     backfill_version,
     execute_jobs,
+    jobs_for_pairs,
     load_bb_map,
-    make_pair_job,
     sims_sufficient,
 )
 from .cache import StrengthCache
@@ -55,19 +54,6 @@ def strength_out_path(bb_version: str, root: Path | None = None) -> Path:
     return base / bb_version / "strength.jsonl"
 
 
-def cross_shell_hash(row_input: dict) -> str:
-    """Shell hash as stored on cache pairs (matches make_cross_input + shell_hash)."""
-    return shell_hash_of(
-        {
-            "DamageCap": row_input.get("DamageCap"),
-            "turn": row_input.get("turn"),
-            "availableRaces": row_input.get("availableRaces"),
-            "Anomaly": row_input.get("Anomaly"),
-            "isDuos": False,
-        }
-    )
-
-
 def build_score_map(
     boards: list[Board],
     panel_by_turn: dict[int, set[str]],
@@ -76,10 +62,13 @@ def build_score_map(
     bb_version: str,
     target_sims: int = ITERATIONS,
     turn_slack: int = 1,
+    slack_turns: set[int] | None = None,
 ) -> tuple[ScoreMap, list[tuple[Board, Board]]]:
     """Load s(row,col) from cache for leave-one-game pairs within turn±slack.
 
-    Uses hash index (no re-assembly) for speed. Returns (scores, missing_pairs).
+    ``slack_turns`` limits ±slack to those turns. ``None`` applies ``turn_slack``
+    to every turn (older behavior). Uses hash index (no re-assembly) for speed.
+    Returns (scores, missing_pairs).
     """
     by_id = {b.board_id: b for b in boards}
     by_turn: dict[int, list[Board]] = defaultdict(list)
@@ -93,8 +82,9 @@ def build_score_map(
 
     turns = sorted(by_turn)
     for t in turns:
+        slack = turn_slack if (slack_turns is None or t in slack_turns) else 0
         col_ids: set[str] = set()
-        for tt in range(t - turn_slack, t + turn_slack + 1):
+        for tt in range(t - slack, t + slack + 1):
             col_ids |= set(panel_by_turn.get(tt, set()))
         cols = [by_id[i] for i in sorted(col_ids) if i in by_id]
         for row in by_turn[t]:
@@ -223,6 +213,7 @@ def ensure_pairs(
 
         if not thin_turns:
             log("L1 fill skipped: all turns have leave-one-game G ≥ G_min")
+        pair_index = cache.load_pair_index(bb_version) if thin_turns else None
         for t in thin_turns:
             nearby = []
             panel_ids: set[str] = set()
@@ -236,16 +227,17 @@ def ensure_pairs(
             by_id = {b.board_id: b for b in nearby}
             uniq = list(by_id.values())
             pairs = needed_pairs_across(uniq, panel_ids)
-            jobs: list[PairJob] = []
-            seen: set[str] = set()
-            for row, col in pairs:
-                j = make_pair_job(
-                    row, col, bb_version=bb_version, cache=cache, target_sims=target_sims
-                )
-                if j is None or j.pair_key in seen:
-                    continue
-                seen.add(j.pair_key)
-                jobs.append(j)
+            links: list[dict[str, Any]] = []
+            jobs = jobs_for_pairs(
+                pairs,
+                bb_version=bb_version,
+                cache=cache,
+                target_sims=target_sims,
+                pair_index=pair_index,
+                matchup_sink=links,
+            )
+            if links:
+                cache.upsert_matchups(links)
             info = {
                 "turn": t,
                 "pairsNeeded": len(pairs),
@@ -447,10 +439,18 @@ def run_percentile(
         for t, bl in by_turn.items():
             panels[t] = set(build_panel(bl, bb_version=bb_version, turn=t, k=k).board_ids)
 
-        # Score map: same-turn only unless some turn is below G_min (needs L1).
-        thin = any(len({b.game_id for b in bl}) - 1 < G_MIN for bl in by_turn.values())
-        slack = 1 if (thin and L1_ENABLED) else 0
-        log(f"loading score matrix from cache (turn_slack={slack})…")
+        # L1 (±1 turn) only for turns whose leave-one-game pool is below G_min.
+        # A thin late turn must not pull every earlier turn into the cross-turn matrix.
+        thin_turns = {
+            t
+            for t, bl in by_turn.items()
+            if len({b.game_id for b in bl}) - 1 < G_MIN
+        }
+        slack = 1 if (thin_turns and L1_ENABLED) else 0
+        log(
+            f"loading score matrix from cache "
+            f"(turn_slack={slack}, thinTurns={sorted(thin_turns) if slack else []})…"
+        )
         scores, missing = build_score_map(
             boards,
             panels,
@@ -458,19 +458,17 @@ def run_percentile(
             bb_version=bb_version,
             target_sims=target_sims,
             turn_slack=slack,
+            slack_turns=thin_turns if slack else set(),
         )
         if missing and fill_missing and not dry_run_fill:
             log(f"score map still missing {len(missing)} pairs; running top-up batch")
-            jobs: list[PairJob] = []
-            seen: set[str] = set()
-            for row, col in missing:
-                j = make_pair_job(
-                    row, col, bb_version=bb_version, cache=cache, target_sims=target_sims
-                )
-                if j is None or j.pair_key in seen:
-                    continue
-                seen.add(j.pair_key)
-                jobs.append(j)
+            jobs = jobs_for_pairs(
+                missing,
+                bb_version=bb_version,
+                cache=cache,
+                target_sims=target_sims,
+                pair_index=cache.load_pair_index(bb_version),
+            )
             if jobs:
                 execute_jobs(
                     jobs,
@@ -490,6 +488,7 @@ def run_percentile(
                     bb_version=bb_version,
                     target_sims=target_sims,
                     turn_slack=slack,
+                    slack_turns=thin_turns if slack else set(),
                 )
 
         cand_turns = set(turns) if turns is not None else set(by_turn)

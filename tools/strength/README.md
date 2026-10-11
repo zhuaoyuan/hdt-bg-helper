@@ -37,4 +37,5 @@ python -m tools.strength verify-p3t0 --limit 120 --stride 40
 
 诊断根目录默认同时扫 `data/BgHelperDiag` 与 `%APPDATA%\HearthstoneDeckTracker\BgHelperDiag`。  
 缓存默认 `data/strength/cache.sqlite`（gitignore）。  
+`pairs` 存模拟次数；`matchups` 存「哪个场面打过哪个场面」并指向 `pairKey`。命中后不再重跑。  
 分位输出默认 `data/strength/<bbVersion>/strength.jsonl`。

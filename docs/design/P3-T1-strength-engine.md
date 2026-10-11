@@ -116,6 +116,8 @@ SQLite 文件 `data/strength/cache.sqlite`（gitignore），只追加。
 | `pairs` | `pairKey`（主键）、`bbVersion`、`rowBoardHash`、`colBoardHash`、`shellHash`、`assemblerVersion`、`sims`、`wins`、`ties`、`losses`、`myDeathRate`、`theirDeathRate`、`avDamage`、`elapsedMs`、`createdAt` |
 
 - `pairKey = sha256(bbVersion | assemblerVersion | 规范化后的拼装 Input)`。规范化包括：按键排序，以及 `$id` 重新编号（重编号本来就是确定的）。
+- **阵容身份表 `matchups`**（2026-10-10）：主键 `(bbVersion, rowBoardId, colBoardId)`，只存指向 `pairs.pairKey` 的链接和双方 hash。胜率次数仍在 `pairs`。已有对战命中 hash 索引就写入 `matchups`，不再重跑模拟。详见 [`P3-matchup-store.md`](P3-matchup-store.md)。
+- **L1 只开薄回合：** 某一晚回合局数不够时，只给该回合补 turn±1，不把整桶都拉进跨回合矩阵。
 - **存次数，不存比率。** 同一个 key 需要更多迭代时可以补跑，把次数相加合并，旧结果不作废。
 - **失效条件：** BB 版本不同、拼装逻辑版本 `assemblerVersion` 变化，都会导致 key 改变；场面不再是 `ready` 时，从 `boards` 中标记剔除，`pairs` 保留。
 - **去重：** 两个规范化后完全相同的场面（常见于第 1–2 回合）共用 hash，`pairs` 只算一次。实体 Id 等每局不同的字段是否要一起抹掉，留给 P3-T2 核对；就算不抹，结果也正确，只是去重率低一些。

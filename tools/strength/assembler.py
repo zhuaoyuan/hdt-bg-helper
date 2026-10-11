@@ -163,6 +163,19 @@ def shell_hash(inp: dict) -> str:
     return sha256_hex(stable_json(shell_payload(inp)))
 
 
+def cross_shell_hash(row_input: dict) -> str:
+    """Shell hash stored on a cached pair. Rules come from the row input; duos is forced off."""
+    return shell_hash(
+        {
+            "DamageCap": row_input.get("DamageCap"),
+            "turn": row_input.get("turn"),
+            "availableRaces": row_input.get("availableRaces"),
+            "Anomaly": row_input.get("Anomaly"),
+            "isDuos": False,
+        }
+    )
+
+
 def pair_key(bb_version: str, assembled: dict, assembler_version: str = ASSEMBLER_VERSION) -> str:
     """sha256(bbVersion | assemblerVersion | normalized assembled Input)."""
     payload = f"{bb_version}|{assembler_version}|{stable_json(assembled)}"
