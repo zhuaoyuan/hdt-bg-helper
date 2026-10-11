@@ -29,7 +29,7 @@
 | --- | --- | --- |
 | [ADR-0001](0001-agent-driven-docs-structure.md) | 采用分类文档体系支撑 agent 驱动开发 | accepted |
 | [ADR-0002](0002-bobsbuddy-as-primary-simulator.md) | 以 Bob's Buddy 作为首选战斗模拟器 | accepted |
-| [ADR-0003](0003-strength-metric-definition.md) | 以"本回合战力分位"作为核心战力指标 | accepted |
+| [ADR-0003](0003-strength-metric-definition.md) | 以"本回合战力分位"作为核心战力指标 | accepted（得分公式被 ADR-0016 取代） |
 | [ADR-0004](0004-capture-light-compute-async.md) | 插件采集保持轻量，原始数据只追加，计算异步化 | accepted |
 | [ADR-0005](0005-modded-hdt-as-test-environment.md) | 以本机安装的修改版 HDT 作为实测与验证环境 | superseded by ADR-0007 |
 | [ADR-0006](0006-personal-plugin-use-of-hdt-bobsbuddy.md) | 个人非商业插件可调用本机 HDT / Bob's Buddy 公开 API | accepted |
@@ -42,3 +42,6 @@
 | [ADR-0013](0013-offline-static-review-html.md) | 赛后复盘原型以离线静态 HTML 交付 | accepted |
 | [ADR-0014](0014-relax-p3-exit-width.md) | P3 退出标准第 1 条放宽聚类 bootstrap 宽度门槛 | accepted |
 | [ADR-0015](0015-sim-pool-by-compat.md) | 战力参照池按模拟池分组，不按 BB 文件版本各成一桶 | accepted |
+| [ADR-0016](0016-turn-dependent-matchup-score.md) | 对战得分随回合变化，并替换默认战力 | accepted（选点被 ADR-0017 取代；覆盖分位文件的时机被 ADR-0018 取代） |
+| [ADR-0017](0017-score-search-blood-and-placement.md) | 得分搜索：最后 3 场对名次，其余回合对平均掉血 | accepted |
+| [ADR-0018](0018-reuse-raw-redo-score-dependents.md) | 原始对战数据复用；依赖战力分的 P3 产物等新引擎有效后再重做 | accepted |
