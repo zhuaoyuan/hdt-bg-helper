@@ -10,7 +10,10 @@ from tools.strength.score_policy import (
     baseline_score,
     damage_lambda,
     matchup_score,
+    step_weight,
+    ten_curves,
     tie_weight,
+    two_segment_weight,
 )
 
 
@@ -58,6 +61,51 @@ class DamageTermTests(unittest.TestCase):
     def test_q020_search_path_has_no_damage(self) -> None:
         s = matchup_score(0.5, 0.2, 12, t1=12, alpha=0.0, beta=0.0, z_deal=9.0, z_take=9.0)
         self.assertAlmostEqual(s, 0.5 + tie_weight(12, 12) * 0.2)
+
+
+class ShapeV2Tests(unittest.TestCase):
+    """Design R-score-policy-search-v2 §5: ten curves, bounds, lock, monotone, ordering."""
+
+    def test_exactly_ten_closed_shapes(self) -> None:
+        curves = ten_curves()
+        self.assertEqual(len(curves), 10)
+        families = [c.family for c in curves]
+        self.assertEqual(families.count("linear"), 3)
+        self.assertEqual(families.count("step"), 3)
+        self.assertEqual(families.count("two"), 4)
+        names = [c.name for c in curves]
+        self.assertEqual(len(names), len(set(names)))
+
+    def test_bounds_lock_and_monotone(self) -> None:
+        turns = list(range(1, 25))
+        for curve in ten_curves():
+            weights = [curve.weight(t) for t in turns]
+            for turn, w in zip(turns, weights):
+                self.assertGreaterEqual(w, W_FLOOR, msg=curve.name)
+                self.assertLessEqual(w, 1.0, msg=curve.name)
+                if turn <= 5:
+                    self.assertEqual(w, 1.0, msg=f"{curve.name} t={turn}")
+            for prev, nxt in zip(weights, weights[1:]):
+                self.assertLessEqual(nxt, prev + 1e-12, msg=curve.name)
+
+    def test_known_nodes(self) -> None:
+        self.assertEqual(step_weight(8, 9), 1.0)
+        self.assertEqual(step_weight(9, 9), W_FLOOR)
+        # t_lock=5 → ta=9 is 4 turns; turn 7 is halfway from 1 to 0.8.
+        self.assertAlmostEqual(two_segment_weight(7, 9, 15, 0.8), 0.9)
+        self.assertAlmostEqual(two_segment_weight(9, 9, 15, 0.8), 0.8)
+        # ta=9 → tb=15 is 6 turns; turn 12 is halfway from 0.8 to 0.6.
+        self.assertAlmostEqual(two_segment_weight(12, 9, 15, 0.8), 0.7)
+        self.assertAlmostEqual(two_segment_weight(15, 9, 15, 0.8), W_FLOOR)
+        self.assertAlmostEqual(two_segment_weight(18, 12, 18, 0.9), W_FLOOR)
+
+    def test_high_tie_beats_high_win(self) -> None:
+        turns = (1, 5, 6, 8, 9, 12, 15, 18)
+        for curve in ten_curves():
+            for turn in turns:
+                high_tie = curve.score(0.2, 0.8, turn)
+                high_win = curve.score(0.6, 0.1, turn)
+                self.assertGreater(high_tie, high_win, msg=f"{curve.name} t={turn}")
 
 
 class BaselineTests(unittest.TestCase):

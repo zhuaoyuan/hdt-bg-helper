@@ -6,7 +6,7 @@ positive DamageCap truncates damageResults, so the live search fixes alpha=beta=
 """
 from __future__ import annotations
 
-from typing import Callable
+from typing import Any, Callable
 
 # T5 and earlier stay at tie weight 1. Floor is not searched.
 T_LOCK = 5
@@ -72,6 +72,102 @@ def curve_score(t1: int) -> Callable[[float, float, int], float]:
         return matchup_score(win, tie, turn, t1=t1, alpha=0.0, beta=0.0)
 
     return fn
+
+
+def step_weight(turn: int, t1: int, *, w_floor: float = W_FLOOR, t_lock: int = T_LOCK) -> float:
+    """1 through t1-1 (and through t_lock), then a single drop to w_floor."""
+    t = int(turn)
+    if t <= t_lock or t < int(t1):
+        return 1.0
+    return float(w_floor)
+
+
+def two_segment_weight(
+    turn: int,
+    ta: int,
+    tb: int,
+    w_mid: float,
+    *,
+    w_floor: float = W_FLOOR,
+    t_lock: int = T_LOCK,
+) -> float:
+    """1 through t_lock, linear to w_mid at ta, linear to w_floor at tb, then flat."""
+    t = int(turn)
+    a = int(ta)
+    b = int(tb)
+    if t <= t_lock:
+        return 1.0
+    if t >= b:
+        return float(w_floor)
+    mid = float(w_mid)
+    if t <= a:
+        span = a - t_lock
+        if span <= 0:
+            return mid
+        return 1.0 + (mid - 1.0) * (t - t_lock) / float(span)
+    span = b - a
+    if span <= 0:
+        return float(w_floor)
+    return mid + (float(w_floor) - mid) * (t - a) / float(span)
+
+
+class TieCurve:
+    """One of the ten ADR-0019 shapes. Phase 1 score is Pw + w(t) Pt."""
+
+    def __init__(
+        self,
+        name: str,
+        family: str,
+        params: dict[str, Any],
+        weight_of: Callable[[int], float],
+    ):
+        self.name = name
+        self.family = family
+        self.params = dict(params)
+        self._weight_of = weight_of
+
+    def weight(self, turn: int) -> float:
+        return float(self._weight_of(int(turn)))
+
+    def score(self, win: float, tie: float, turn: int) -> float:
+        return float(win) + self.weight(turn) * float(tie)
+
+    def as_score_fn(self) -> Callable[[float, float, int], float]:
+        return self.score
+
+
+def ten_curves() -> list[TieCurve]:
+    """The closed list in design R-score-policy-search-v2 §3.2. Do not add an 11th."""
+    curves: list[TieCurve] = []
+    for t1 in T1_GRID:
+        curves.append(
+            TieCurve(
+                f"linear:t1={t1}",
+                "linear",
+                {"t1": int(t1)},
+                lambda turn, t1=t1: tie_weight(turn, t1),
+            )
+        )
+    for t1 in T1_GRID:
+        curves.append(
+            TieCurve(
+                f"step:t1={t1}",
+                "step",
+                {"t1": int(t1)},
+                lambda turn, t1=t1: step_weight(turn, t1),
+            )
+        )
+    for ta, tb in ((9, 15), (12, 18)):
+        for w_mid in (0.8, 0.9):
+            curves.append(
+                TieCurve(
+                    f"two:ta={ta},tb={tb},w={w_mid}",
+                    "two",
+                    {"ta": int(ta), "tb": int(tb), "wAtTa": float(w_mid)},
+                    lambda turn, ta=ta, tb=tb, w_mid=w_mid: two_segment_weight(turn, ta, tb, w_mid),
+                )
+            )
+    return curves
 
 
 def baseline_score(win: float, tie: float, turn: int) -> float:
