@@ -206,12 +206,13 @@ namespace ReplaySim
 					["hydrateWarnings"] = new JArray(hydrator.Warnings),
 				};
 				var cap = ReadDamageCap(root);
-				if(TrySummarizeLosses(output, cap, out var lossCount, out var cappedLossCount, out var uncappedMedian, out var sampleCount))
+				if(TrySummarizeLosses(output, cap, out var lossCount, out var cappedLossCount, out var uncappedMedian, out var sampleCount, out var takenSum))
 				{
 					result["lossCount"] = lossCount;
 					result["cappedLossCount"] = cappedLossCount;
 					result["uncappedLossMedian"] = uncappedMedian;
 					result["lossSampleCount"] = sampleCount;
+					result["takenSum"] = takenSum;
 					result["damageCap"] = cap;
 				}
 				return result;
@@ -270,12 +271,14 @@ namespace ReplaySim
 			out int lossCount,
 			out int cappedLossCount,
 			out double? uncappedMedian,
-			out int sampleCount)
+			out int sampleCount,
+			out long takenSum)
 		{
 			lossCount = 0;
 			cappedLossCount = 0;
 			uncappedMedian = null;
 			sampleCount = 0;
+			takenSum = 0;
 			var raw = output.GetType().GetField("damageResults", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)?.GetValue(output);
 			if(raw is not System.Collections.IEnumerable samples || raw is string)
 				return false;
@@ -290,6 +293,7 @@ namespace ReplaySim
 					continue;
 				lossCount++;
 				var taken = -v;
+				takenSum += taken;
 				if(damageCap > 0 && taken == damageCap)
 					cappedLossCount++;
 				else

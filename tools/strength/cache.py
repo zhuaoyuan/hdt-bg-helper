@@ -98,6 +98,7 @@ class StrengthCache:
             "cappedLossCount": "INTEGER",
             "uncappedLossMedian": "REAL",
             "lossSampleCount": "INTEGER",
+            "takenSum": "REAL",
         }
         for name, decl in adds.items():
             if name not in cols:
@@ -111,12 +112,13 @@ class StrengthCache:
         capped_loss_count: int,
         uncapped_median: float | None,
         sample_count: int,
+        taken_sum: float,
     ) -> None:
         """Write the loss-damage summary only. Does not change win/tie/loss counts."""
         cur = self._conn.execute(
             """
             UPDATE pairs
-            SET lossCount = ?, cappedLossCount = ?, uncappedLossMedian = ?, lossSampleCount = ?
+            SET lossCount = ?, cappedLossCount = ?, uncappedLossMedian = ?, lossSampleCount = ?, takenSum = ?
             WHERE pairKey = ?
             """,
             (
@@ -124,6 +126,7 @@ class StrengthCache:
                 int(capped_loss_count),
                 None if uncapped_median is None else float(uncapped_median),
                 int(sample_count),
+                float(taken_sum),
                 pair_key,
             ),
         )
@@ -133,7 +136,7 @@ class StrengthCache:
 
     def write_loss_summaries(self, rows: Iterable[tuple]) -> int:
         """Batch form of write_loss_summary. Each row is
-        (loss_count, capped_loss_count, uncapped_median, sample_count, pair_key).
+        (loss_count, capped_loss_count, uncapped_median, sample_count, taken_sum, pair_key).
         """
         payload = list(rows)
         if not payload:
@@ -141,7 +144,7 @@ class StrengthCache:
         self._conn.executemany(
             """
             UPDATE pairs
-            SET lossCount = ?, cappedLossCount = ?, uncappedLossMedian = ?, lossSampleCount = ?
+            SET lossCount = ?, cappedLossCount = ?, uncappedLossMedian = ?, lossSampleCount = ?, takenSum = ?
             WHERE pairKey = ?
             """,
             payload,

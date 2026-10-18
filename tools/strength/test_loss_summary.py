@@ -28,15 +28,17 @@ class SummaryMathTests(unittest.TestCase):
         got = summarize_loss_samples([-2, -4], 15)
         self.assertEqual(got["uncappedLossMedian"], 3.0)
 
-    def test_expected_taken_uses_median_and_cap(self) -> None:
-        # 1 uncapped at median 3, 2 capped at 10, 2 non-losses → (3+20)/5.
+    def test_raw_taken_keeps_capped_samples(self) -> None:
+        got = summarize_loss_samples([4, 0, -3, -10, -10], 10)
+        self.assertEqual(got["takenSum"], 23)
         self.assertAlmostEqual(
             expected_taken(
-                loss_count=3,
-                capped_loss_count=2,
-                uncapped_median=3.0,
-                sample_count=5,
+                loss_count=got["lossCount"],
+                capped_loss_count=got["cappedLossCount"],
+                uncapped_median=got["uncappedLossMedian"],
+                sample_count=got["lossSampleCount"],
                 damage_cap=10,
+                taken_sum=got["takenSum"],
             ),
             23.0 / 5.0,
         )
@@ -78,6 +80,7 @@ class CacheWriteTests(unittest.TestCase):
                     capped_loss_count=1,
                     uncapped_median=4.0,
                     sample_count=10,
+                    taken_sum=23.0,
                 )
                 row = cache.get_pair("pk")
             self.assertEqual(row["wins"], 4.0)
@@ -88,6 +91,7 @@ class CacheWriteTests(unittest.TestCase):
             self.assertEqual(row["cappedLossCount"], 1)
             self.assertEqual(row["uncappedLossMedian"], 4.0)
             self.assertEqual(row["lossSampleCount"], 10)
+            self.assertEqual(row["takenSum"], 23.0)
 
 
 if __name__ == "__main__":

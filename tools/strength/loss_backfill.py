@@ -65,7 +65,7 @@ def plan_midgame_pairs(
                 pk = str(found["pairKey"])
                 if pk in chosen:
                     continue
-                if resume and found.get("lossSampleCount"):
+                if resume and found.get("takenSum") is not None:
                     already += 1
                     continue
                 chosen[pk] = {"pair": found, "row": row, "col": col}
@@ -166,7 +166,7 @@ def run_loss_summary_backfill(
             )
             payload = []
             for r in results:
-                if not r.get("ok") or r.get("lossCount") is None or r.get("lossSampleCount") is None:
+                if not r.get("ok") or r.get("lossCount") is None or r.get("lossSampleCount") is None or r.get("takenSum") is None:
                     failed += 1
                     continue
                 pk = str(r.get("id"))
@@ -181,6 +181,7 @@ def run_loss_summary_backfill(
                         int(r["cappedLossCount"]),
                         None if r.get("uncappedLossMedian") is None else float(r["uncappedLossMedian"]),
                         int(r["lossSampleCount"]),
+                        float(r["takenSum"]),
                         pk,
                     )
                 )

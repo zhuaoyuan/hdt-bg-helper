@@ -170,6 +170,7 @@ def _pair_taken(row: Board, col: Board, pair: dict[str, Any]) -> float | None:
         uncapped_median=pair.get("uncappedLossMedian"),
         sample_count=int(pair["lossSampleCount"]),
         damage_cap=cap,
+        taken_sum=pair.get("takenSum"),
     )
 
 
@@ -437,3 +438,102 @@ def run_score_policy_v2(
     summary["grid"] = str(grid_path)
     summary["summaryPath"] = str(summary_path)
     return summary
+
+
+def evaluate_blood_as_strength(
+    *,
+    sim_pool: str = "1.85.0.0",
+    roots: list[str] | None = None,
+    turns_jsonl: Path | None = None,
+    cache_path: Path | None = None,
+    n_boot: int = 2000,
+    progress: Callable[[str], None] | None = None,
+) -> dict[str, Any]:
+    """Use the blood percentile itself as the strength percentile.
+
+    The score is Spearman of the mean blood percentile on the last 3 combats
+    versus -placement. Turns outside 6–14 have no blood percentile and are skipped.
+    Does not write strength.jsonl.
+    """
+    log = progress or (lambda m: print(m, flush=True))
+    pool = sim_pool_of(sim_pool)
+    root_list = roots or default_diag_roots()
+    turns_by = load_turns(turns_jsonl or DEFAULT_TURNS)
+    boards = collect_boards(
+        root_list,
+        pool,
+        turns_by,
+        versions=member_versions(pool),
+        max_turn=None,
+        include_opponent=True,
+    )
+    with StrengthCache(cache_path or DEFAULT_CACHE) as cache:
+        buckets = bucket_boards(boards)
+        by_turn = {t: bl for (v, t), bl in buckets.items() if v == pool}
+        panels = {
+            t: set(build_panel(bl, bb_version=pool, turn=t, k=PANEL_GAMES).board_ids)
+            for t, bl in by_turn.items()
+        }
+        candidates = [b for t in sorted(by_turn) for b in by_turn.get(t, []) if b.side == "Player"]
+        places = load_final_places(root_list)
+        index = cache.load_pair_index(pool)
+        taken, cap_stats = board_taken_damage(boards, panels, index)
+    by_turn_taken: dict[int, list[tuple[str, float]]] = defaultdict(list)
+    for b in candidates:
+        if b.board_id in taken and MID_LO <= b.turn <= MID_HI:
+            by_turn_taken[b.turn].append((b.board_id, taken[b.board_id]))
+    blood_u: dict[str, float] = {}
+    for vals in by_turn_taken.values():
+        blood_u.update(blood_percentiles(vals))
+    game_ids = sorted({b.game_id for b in candidates})
+    fit_ids, confirm_ids = split_halves(game_ids)
+
+    def points(gids: set[str]) -> tuple[list[dict[str, Any]], int, int]:
+        rows: list[dict[str, Any]] = []
+        slots = 0
+        with_u = 0
+        for gid in gids:
+            group = sorted((b for b in candidates if b.game_id == gid), key=lambda b: b.turn)
+            tail = group[-3:]
+            slots += len(tail)
+            vals = []
+            for b in tail:
+                if b.board_id in blood_u:
+                    vals.append(blood_u[b.board_id])
+                    with_u += 1
+            if gid not in places or not vals:
+                continue
+            rows.append({
+                "gameId": gid,
+                "Q": sum(vals) / float(len(vals)),
+                "u": -float(places[gid]),
+                "n": len(vals),
+            })
+        return rows, slots, with_u
+
+    halves = {}
+    for name, ids in (("fit", set(fit_ids)), ("confirm", set(confirm_ids)), ("all", set(game_ids))):
+        rows, slots, with_u = points(ids)
+        pack = _bootstrap_by_game(rows, "Q", "u", n_boot=n_boot, seed=11)
+        halves[name] = {
+            "rho": pack["rho"],
+            "ci95": pack["ci95"],
+            "nGames": pack["n"],
+            "slots": slots,
+            "slotsWithBlood": with_u,
+        }
+        log(f"{name} rho={pack['rho']} n={pack['n']} ci={pack['ci95']}")
+    report = {
+        "simPool": pool,
+        "label": "blood percentile used as strength; last 3 combats vs -placement",
+        "taken": "mean of raw damageResults; negative samples keep their own magnitude",
+        "cap": cap_stats,
+        "nBloodBoards": len(blood_u),
+        "halves": halves,
+        "strengthJsonl": "unchanged",
+    }
+    out = REPO / "data" / "strength" / pool / "score-policy-v2" / "blood-as-strength.json"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    report["path"] = str(out)
+    return report

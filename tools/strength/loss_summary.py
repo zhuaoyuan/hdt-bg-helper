@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
-"""Loss-damage summary for ADR-0019 labels.
+"""Loss-damage summary for the blood percentile.
 
-Mirrors ReplaySim.TrySummarizeLosses: negative damageResults are losses,
-a positive DamageCap censors at that value, and the median is taken damage
-among losses that are not on the cap. Win/tie samples (>= 0) contribute 0
-to expected taken damage.
+Negative damageResults are losses. Expected taken damage is the mean of the
+raw sample values: a negative sample contributes its own magnitude, including
+when that magnitude equals DamageCap. Wins and ties contribute 0. Capped
+losses stay in the sample.
 """
 from __future__ import annotations
 
@@ -18,17 +18,19 @@ def summarize_loss_samples(samples: Sequence[int], damage_cap: int) -> dict[str,
     loss_count = 0
     capped = 0
     sample_count = 0
+    taken = 0
     for raw in samples:
         sample_count += 1
         v = int(raw)
         if v >= 0:
             continue
         loss_count += 1
-        taken = -v
-        if cap > 0 and taken == cap:
+        got = -v
+        taken += got
+        if cap > 0 and got == cap:
             capped += 1
         else:
-            uncapped.append(taken)
+            uncapped.append(got)
     if sample_count == 0:
         return None
     median = _median(uncapped) if uncapped else None
@@ -37,6 +39,7 @@ def summarize_loss_samples(samples: Sequence[int], damage_cap: int) -> dict[str,
         "cappedLossCount": capped,
         "uncappedLossMedian": median,
         "lossSampleCount": sample_count,
+        "takenSum": taken,
         "damageCap": cap,
     }
 
@@ -56,25 +59,18 @@ def expected_taken(
     uncapped_median: float | None,
     sample_count: int,
     damage_cap: int,
+    taken_sum: float | None = None,
 ) -> float | None:
-    """Mean taken damage over the sample. Wins and ties are 0.
+    """Mean of raw taken damage. Each negative sample counts as its own value.
 
-    Uncapped losses use their median; capped losses use the cap. That is the
-    average that can be rebuilt from the stored columns.
+    ``taken_sum`` is required. Capped losses are included at the value written
+    in damageResults, not dropped and not replaced by a separate cap rule.
     """
+    del loss_count, capped_loss_count, uncapped_median, damage_cap
     n = int(sample_count)
-    if n <= 0:
+    if n <= 0 or taken_sum is None:
         return None
-    losses = int(loss_count)
-    capped = int(capped_loss_count)
-    if capped < 0 or capped > losses or losses > n:
-        return None
-    uncapped_n = losses - capped
-    if uncapped_n > 0 and uncapped_median is None:
-        return None
-    med = 0.0 if uncapped_n == 0 else float(uncapped_median)
-    cap = float(damage_cap) if int(damage_cap) > 0 else 0.0
-    return (uncapped_n * med + capped * cap) / float(n)
+    return float(taken_sum) / float(n)
 
 
 def z_take(
