@@ -38,3 +38,4 @@
 | [R-positioning-enumerate](R-positioning-enumerate.md) | 主线外：T3/T4 分层抽样全排列 + 头部 20% 共性（Q-019） | implemented |
 | [R-progress-trend](R-progress-trend.md) | 主线外：当前模拟池对局战力与生存回合时序 | implemented |
 | [R-score-policy-search](R-score-policy-search.md) | 主线外：随回合变化的胜/平权重与伤害分位；替换默认战力（ADR-0016） | review |
+| [R-dummy-ladder](R-dummy-ladder.md) | 主线外：7 个相同木桩的梯队，把场面打成一个攻血绝对值（Q-021） | implemented |
