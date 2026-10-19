@@ -159,6 +159,8 @@ def collect_boards(
                 "hdtLoss": (out_sum.get("lossRate") if out_sum else None)
                 or ((row or {}).get("output") or {}).get("lossRate"),
                 "placement": (row or {}).get("placement"),
+                "rules": (row or {}).get("rules"),
+                "meta": (row or {}).get("meta"),
             }
 
             sides = ("Player", "Opponent") if include_opponent else ("Player",)

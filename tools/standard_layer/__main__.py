@@ -3,14 +3,18 @@
 from __future__ import annotations
 
 import argparse
+import datetime as _dt
+import hashlib
 import json
 import os
 import sys
 from pathlib import Path
 
-from .combat import discover_games, iter_game_combats, session_start_reason
+from . import __version__ as STANDARD_LAYER_VERSION
+from .combat import discover_games, iter_game_combats, rules_block, session_start_reason
 from .crosscheck import crosscheck_turn
 from .gaps import detect_gaps
+from .placement import final_local_place
 from .report import build_report, format_report
 from .result import analyze_lb_and_hdt, choose_result
 from .status import classify_status
@@ -26,6 +30,7 @@ def build_row(
     combat: dict,
     tuanzi_pair: dict | None,
     recon_by_turn: dict[int, dict],
+    final_place: int | None,
     *,
     do_replay: bool,
     replay_cache: dict,
@@ -34,6 +39,23 @@ def build_row(
     tz_turn = turn_from_pair(tuanzi_pair, turn)
     recon = recon_by_turn.get(int(turn)) if turn is not None else None
     chosen = choose_result(tz_turn, recon)
+    tz_place = tuanzi_pair["game"].get("place") if tuanzi_pair else None
+    tz_died = bool(
+        tuanzi_pair
+        and any(bool(t.get("died")) for t in (tuanzi_pair["game"].get("turns") or {}).values())
+    )
+    # A tuanzi record that says "#1" but also says "I was carried out" is
+    # internally inconsistent; do not propagate that place into the label.
+    tz_place_valid = not (tz_place == 1 and tz_died)
+    if tz_place is not None and tz_place_valid:
+        placement = tz_place
+        placement_source = "tuanzi"
+    elif final_place is not None:
+        placement = final_place
+        placement_source = "raw_lb"
+    else:
+        placement = None
+        placement_source = None
 
     gap_flags = detect_gaps(combat.get("input"), combat.get("entities"))
     status, reasons = classify_status(
@@ -45,9 +67,7 @@ def build_row(
     )
     cross = crosscheck_turn(combat, tz_turn)
 
-    placement = None
-    if tuanzi_pair:
-        placement = tuanzi_pair["game"].get("place")
+    rules = rules_block(combat, meta)
 
     row = {
         "gameId": game_id,
@@ -62,6 +82,11 @@ def build_row(
         "result": chosen.get("result"),
         "damage": chosen.get("damage"),
         "placement": placement,
+        "placementRaw": final_place,
+        "placementTuanzi": tz_place,
+        "placementTuanziValid": tz_place_valid,
+        "placementSource": placement_source,
+        "rules": rules,
         "resultSource": chosen.get("resultSource"),
         "status": status,
         "statusReasons": reasons,
@@ -76,6 +101,9 @@ def build_row(
             "bbVersion": (meta.get("bobsBuddy") or {}).get("fileVersion")
             or (meta.get("bobsBuddy") or {}).get("version"),
             "hdtVersion": (meta.get("hdt") or {}).get("fileVersion") or (meta.get("hdt") or {}).get("version"),
+            "hearthDbVersion": (meta.get("hearthDb") or {}).get("fileVersion")
+            or (meta.get("hearthDb") or {}).get("version"),
+            "hearthstoneBuild": meta.get("hearthstoneBuild"),
             "duos": bool(meta.get("isBattlegroundsDuosMatch")),
             "schemaVersion": meta.get("schemaVersion"),
         },
@@ -113,6 +141,7 @@ def import_all(
     session_by_game: dict[str, str | None] = {}
     full_combats: dict[str, list[dict]] = {}
     dirs: dict[str, str] = {}
+    final_place_by_game: dict[str, int | None] = {}
 
     for gid, gdir in sorted(games.items()):
         try:
@@ -122,6 +151,7 @@ def import_all(
             continue
         meta_by_game[gid] = meta
         session_by_game[gid] = session_start_reason(records)
+        final_place_by_game[gid] = final_local_place(records)
         full_combats[gid] = combats
         dirs[gid] = gdir
         combat_views[gid] = [
@@ -144,6 +174,7 @@ def import_all(
             print(f"[warn] result reconstruct {gid}: {type(ex).__name__}: {ex}", file=sys.stderr)
             recon = {}
         pair = pairs.get(gid)
+        final_place = final_place_by_game.get(gid)
         for c in combats:
             rows.append(
                 build_row(
@@ -154,6 +185,7 @@ def import_all(
                     c,
                     pair,
                     recon,
+                    final_place,
                     do_replay=do_replay,
                     replay_cache=replay_cache,
                 )
@@ -161,6 +193,65 @@ def import_all(
 
     report = build_report(rows, pairs=pairs, meta_by_game=meta_by_game)
     return rows, report, meta_by_game, pairs
+
+
+def _sha256(path: Path) -> str:
+    h = hashlib.sha256()
+    with path.open("rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def write_dataset_manifest(
+    out_dir: Path,
+    *,
+    roots: list[str],
+    turns_path: Path,
+    report_path: Path,
+    report_txt: Path,
+    report: dict,
+) -> Path:
+    """Write the canonical-dataset manifest next to turns/quality report.
+
+    This does not move or delete the historical ``data/standard_*`` outputs; it
+    only records which files/versions the current importer considers canonical.
+    """
+    dataset = {
+        "datasetVersion": 1,
+        "standardLayerVersion": STANDARD_LAYER_VERSION,
+        "generatedAt": _dt.datetime.now().astimezone().isoformat(timespec="seconds"),
+        "canonical": True,
+        "roots": roots,
+        "files": {
+            "turns": {
+                "path": turns_path.name,
+                "sha256": _sha256(turns_path),
+                "bytes": turns_path.stat().st_size,
+            },
+            "qualityReport": {
+                "path": report_path.name,
+                "sha256": _sha256(report_path),
+                "bytes": report_path.stat().st_size,
+            },
+            "qualityReportText": {
+                "path": report_txt.name,
+                "sha256": _sha256(report_txt),
+                "bytes": report_txt.stat().st_size,
+            },
+        },
+        "counts": {
+            "games": report.get("gamesCount"),
+            "turns": report.get("turnCount"),
+            "status": report.get("statusCounts"),
+        },
+        "placement": report.get("placement"),
+        "rules": report.get("rules"),
+        "versions": report.get("versions"),
+    }
+    path = out_dir / "dataset.json"
+    path.write_text(json.dumps(dataset, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return path
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -209,10 +300,19 @@ def main(argv: list[str] | None = None) -> int:
     report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     text = format_report(report)
     report_txt.write_text(text + "\n", encoding="utf-8")
+    dataset_path = write_dataset_manifest(
+        out_dir,
+        roots=roots,
+        turns_path=turns_path,
+        report_path=report_path,
+        report_txt=report_txt,
+        report=report,
+    )
     print(text)
     print(f"\nwrote {turns_path} ({len(rows)} rows)")
     print(f"wrote {report_path}")
     print(f"wrote {report_txt}")
+    print(f"wrote {dataset_path}")
     return 0
 
 

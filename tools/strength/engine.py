@@ -334,6 +334,7 @@ def evaluate_candidate(
     O = opponent_set(R, panel_ids, scores, cand.board_id)
     core = round_robin(cand, R=R, O=O, scores=scores, w_relax=w_relax)
     flags: list[str] = []
+    label_meta = cand.label.get("meta") or {}
     row: dict[str, Any] = {
         "boardId": cand.board_id,
         "gameId": cand.game_id,
@@ -341,6 +342,14 @@ def evaluate_candidate(
         "side": cand.side,
         "bbVersion": cand.bb_version,
         "simPool": cand.sim_pool,
+        "rules": cand.label.get("rules") or {},
+        "rulesSource": "engine",
+        "versions": {
+            "bbVersion": cand.bb_version,
+            "hdtVersion": label_meta.get("hdtVersion"),
+            "hearthDbVersion": label_meta.get("hearthDbVersion"),
+            "hearthstoneBuild": label_meta.get("hearthstoneBuild"),
+        },
         "S": None if core is None else core["S"],
         "percentile": None if core is None else core["percentile"],
         "ci95": None,

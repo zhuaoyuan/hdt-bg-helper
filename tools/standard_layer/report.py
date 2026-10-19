@@ -52,6 +52,53 @@ def build_report(rows: list[dict], *, pairs: dict, meta_by_game: dict[str, dict]
         for g in r.get("gapFlags") or []:
             gap_counts[g.split(":")[0]] += 1
 
+    # Placement: local final place from raw vs tuanzi label. Only the local
+    # player's final place is claimed; full lobby ranking is not available.
+    raw_place_by_game: dict[str, int] = {}
+    tz_place_by_game: dict[str, int] = {}
+    tz_inconsistent_games: set[str] = set()
+    for r in rows:
+        gid = r.get("gameId")
+        if gid is None:
+            continue
+        gid = str(gid)
+        if r.get("placementRaw") is not None:
+            raw_place_by_game[gid] = int(r["placementRaw"])
+        if r.get("placementTuanzi") is not None:
+            tz_place_by_game[gid] = int(r["placementTuanzi"])
+        if r.get("placementTuanzi") is not None and r.get("placementTuanziValid") is False:
+            tz_inconsistent_games.add(gid)
+    compared = sorted(set(raw_place_by_game) & set(tz_place_by_game))
+    mismatches = [
+        {
+            "gameId": gid,
+            "raw": raw_place_by_game[gid],
+            "tuanzi": tz_place_by_game[gid],
+        }
+        for gid in compared
+        if raw_place_by_game[gid] != tz_place_by_game[gid]
+    ]
+    placement = {
+        "rowsWithPlacement": sum(1 for r in rows if r.get("placement") is not None),
+        "rowsWithRawPlacement": sum(1 for r in rows if r.get("placementRaw") is not None),
+        "sources": dict(Counter(r.get("placementSource") for r in rows)),
+        "rawVsTuanzi": {
+            "gamesCompared": len(compared),
+            "gamesMatch": len(compared) - len(mismatches),
+            "mismatchCount": len(mismatches),
+            "mismatchSamples": mismatches[:20],
+            "tuanziInconsistentGames": sorted(tz_inconsistent_games),
+        },
+    }
+    rules_coverage = {
+        "rowsWithAvailableRaces": sum(
+            1 for r in rows if (r.get("rules") or {}).get("availableRaces") is not None
+        ),
+        "rowsWithAnomaly": sum(1 for r in rows if (r.get("rules") or {}).get("anomalyDbfId") is not None),
+        "rowsWithDamageCap": sum(1 for r in rows if (r.get("rules") or {}).get("damageCap") is not None),
+        "duosRows": sum(1 for r in rows if (r.get("rules") or {}).get("duos") is True),
+    }
+
     by_bb: Counter = Counter()
     by_hdt: Counter = Counter()
     for gid, m in meta_by_game.items():
@@ -127,6 +174,8 @@ def build_report(rows: list[dict], *, pairs: dict, meta_by_game: dict[str, dict]
             "passRate": (replay_ok / max(1, len(replay_rows) - replay_skip)) if replay_rows else None,
         },
         "gapPositives": dict(gap_counts),
+        "placement": placement,
+        "rules": rules_coverage,
         "versions": {"bobsBuddy": dict(by_bb), "hdt": dict(by_hdt)},
         "paired": paired,
         "smoke": smoke,
@@ -181,7 +230,32 @@ def format_report(report: dict) -> str:
         )
     if report["gapPositives"]:
         lines.append(f"gap positives: {report['gapPositives']}")
+    pl = report.get("placement") or {}
+    if pl:
+        rt = pl.get("rawVsTuanzi") or {}
+        lines.append(
+            "placement: rows={rows} raw={raw} sources={sources} "
+            "rawVsTuanzi={match}/{compared} (mismatch={mismatch}, tuanziInconsistent={bad})".format(
+                rows=pl.get("rowsWithPlacement"),
+                raw=pl.get("rowsWithRawPlacement"),
+                sources=pl.get("sources"),
+                match=rt.get("gamesMatch"),
+                compared=rt.get("gamesCompared"),
+                mismatch=rt.get("mismatchCount"),
+                bad=len(rt.get("tuanziInconsistentGames") or []),
+            )
+        )
     lines.append(f"BB versions: {report['versions']['bobsBuddy']}")
+    rc = report.get("rules") or {}
+    if rc:
+        lines.append(
+            "rules: races={races} anomaly={anomaly} damageCap={cap} duos={duos}".format(
+                races=rc.get("rowsWithAvailableRaces"),
+                anomaly=rc.get("rowsWithAnomaly"),
+                cap=rc.get("rowsWithDamageCap"),
+                duos=rc.get("duosRows"),
+            )
+        )
     lines.append(f"HDT versions: {report['versions']['hdt']}")
     lines.append(f"exitCriteria hint: {report['exitCriteriaHint']}")
     lines.append("paired games:")

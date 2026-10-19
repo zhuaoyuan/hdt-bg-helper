@@ -14,7 +14,7 @@
 ## 发现（摘要）
 
 - **`ready` 是“可复现性”指标，不是“真实状态完整”指标。** 系统性盲区只进 `gapFlags` 不降级，且 `gapFlags` 只有 4 类；对手 `ResourcesSpent` 恒 0 却没有对应 flag。
-- **名次/终局八人排名没落进标准层**：标准层 `placement` 只从团子取（130/933 非空），但原始排行榜实体里有 `PLAYER_LEADERBOARD_PLACE`（`power_replay.py` 已解析），是低成本可补项。
+- **名次没有落进标准层**：标准层 `placement` 只从团子取（130/933 非空）；本地玩家终局名次可从 raw 的 `game_end` 快照读（`raw_placement.py`，score-search 用过 56 局），但没有写回。注意**完整八人排名不可得**：`PLAYER_LEADERBOARD_PLACE` 只在出局时确定，提前出局时剩余玩家名次不在本局日志里。
 - **规则上下文（畸变/种族/伤害上限/补丁）没有进标准层和 `strength.jsonl`**，参照池无法按同规则筛选，复算无法证明当时大厅规则。
 - **非战斗阶段没有结构化**：商店/金币/购买/出售/刷新/三连/技能使用只在 `power.log.gz` 原始行里；插件不在购物阶段拍快照。愿景明确要求“现在就采集当回合金币、酒馆状态和操作事件”，尚未实现。若继续依赖 raw，必须保证 `power.log.gz` 长期保留（现策略是磁盘紧张时先删它）。
 - **标准层不自包含**：`tools/strength/pool.py` 和 `review_view/boards.py` 都回读原始记录；raw 是唯一事实源，但分散在两个根、无 manifest/校验，质量报告停在 55 局/640 回合，而 `turns.jsonl` 已 933 行。

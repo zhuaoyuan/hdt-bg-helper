@@ -8,7 +8,7 @@
 工具：spikes/replay-harness/（ReplaySim + tools/roundtrip.py）
 DLL：%LOCALAPPDATA%\HearthstoneDeckTracker\app-1.58.3（BB 1.78.1）、app-1.58.6（BB 1.85.0）
 对照：记录 Output 的 win/tie/loss × simulationCount；判定为合并二项 SE 的 3σ，并加 1.5/n 量级地板
-最后核实：2026-10-05
+最后核实：2026-10-20（新增 1.88.6 同版本批；1.78/1.85 仍为 2026-10-05）
 ```
 
 ## 1. 往返验证（同版本 DLL）
@@ -19,6 +19,13 @@ DLL：%LOCALAPPDATA%\HearthstoneDeckTracker\app-1.58.3（BB 1.78.1）、app-1.58
 | 通过 | **261 / 261（100%）** |
 | hydrate / 模拟失败 | 0 |
 | 残留 invoker | 已排除：只取 `combat_phase=true…false` 分段内、`state=Combat` 且 `hasOutput`、最大 `reRunCount` 的一条 |
+
+### 1.1 1.88.6 同版本批（2026-10-20）
+
+- 样本：`%APPDATA%\HearthstoneDeckTracker\BgHelperDiag` 的 81 局 / **978** 场有 Output 的 1.88.6 Combat；DLL：`C:\Program Files\HDT\BobsBuddy.dll`（1.88.6.0）。
+- 结果：**978 / 978 通过**（3σ），hydrate/模拟失败 0；JSON 在 `data/strength/roundtrip_188_full.json`（本地，不入库）。
+- 1.88.6 的团子文本仍缺（这批 `paired=0`），所以没有做团子对照；同版本 Input→Output 往返本身已通过。
+- 复现：`python spikes/replay-harness/tools/roundtrip.py --root "%APPDATA%\HearthstoneDeckTracker\BgHelperDiag" --versions 1.88.6.0 --json-out data/strength/roundtrip_188_full.json`（当前 `mode_roundtrip` 只读单个 `--root`，不是 `--roots`）。
 
 匿名化误伤修复（导入侧，不改原始文件）后才能对腐蚀局通过。本批见到的结构性碰撞：
 

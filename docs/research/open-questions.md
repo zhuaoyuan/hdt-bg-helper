@@ -10,9 +10,9 @@
 
 | 编号 | 问题 | 影响 | 验证方式 | 关联 | 状态 |
 | --- | --- | --- | --- | --- | --- |
-| Q-002 | 能否通过反射读取 HDT 内部 `BobsBuddyInvoker._input`，作为对照基准或数据源？稳定性如何？ | 中 | **已跨至团子 HDT 1.58.9 / BB 1.88.6 采集成功**（2026-10-07：局 `177672`，8/8 Combat 有 Input+Output，`probeInitError` 空；Input/Player 顶层键相对 1.85 局无增减，见 `facts/diag-bb188-first-game-20261007.md`）。此前批：HDT 1.58.3→1.58.6，BB 1.78.1→1.85.0。P2-T1 主数据源（ADR-0010）。仍 investigating：**1.88.6 同版本 roundtrip 尚未跑**（`bb-dirs.json` 未登记）；升级冒烟仍要 `check_capture` + roundtrip | ADR-0010、`spikes/hdt-diag-logger/` | investigating |
+| Q-002 | 能否通过反射读取 HDT 内部 `BobsBuddyInvoker._input`，作为对照基准或数据源？稳定性如何？ | 中 | **已跨至团子 HDT 1.58.9 / BB 1.88.6 采集成功**（2026-10-07：局 `177672`，8/8 Combat 有 Input+Output，`probeInitError` 空；Input/Player 顶层键相对 1.85 局无增减，见 `facts/diag-bb188-first-game-20261007.md`）。此前批：HDT 1.58.3→1.58.6，BB 1.78.1→1.85.0。P2-T1 主数据源（ADR-0010）。仍 investigating：**1.88.6 同版本 roundtrip 已跑，978/978 通过（2026-10-20）**；升级冒烟仍需 `check_capture` + 小样本 roundtrip（跨 HDT 大版本反射字段名仍是风险） | ADR-0010、`spikes/hdt-diag-logger/` | investigating |
 | Q-008 | 个人对局数据量能否支撑按"同补丁 + 同回合 + 同规则"筛选的参照池？需要多少局？ | 高 | 估算见 `research/q008-personal-data-volume.md`。**P3-T0 实测**：约 23 局时 bootstrap（场面重采样）中位宽 ≈12–14。**P3-T1 校准**：\(G_\text{min}=6\)；聚类 bootstrap 中位宽本批≈36 点（离散分位主导，见 `facts/strength-calibration.md`）。严格再按种族/畸变分桶仍不可行 | P3、`facts/strength-cross-p3t0.md`、`facts/strength-calibration.md` | investigating |
-| Q-022 | P5 需要的经济/操作数据（金币、商店、购买/出售/刷新/三连、英雄技能、方向标注）是 P4 前补成结构化事件，还是只保证 `power.log.gz` 长期保留、以后再解析？ | 高 | 先按 `research/data-architecture-audit-20261018.md` P0 补可从 raw 提取的字段；经济项需插件购物阶段事件原型 + raw 保留策略二选一。P4 前由所有者定 | P5、`research/data-architecture-audit-20261018.md`、`design/P2-data-capture.md` §3.5 | open |
+| Q-022 | P5 需要的经济/操作数据（金币、商店、购买/出售/刷新/三连、英雄技能、方向标注）是 P4 前补成结构化事件，还是只保证 `power.log.gz` 长期保留、以后再解析？ | 高 | **2026-10-19 所有者决定暂缓**：不排期，只保留 raw 保留/解析的口子。先做已批准的 C1–C4；经济项等 P5 前再定 | P5、`research/data-architecture-audit-20261018.md`、`design/R-data-completeness-plan.md` | open |
 
 ## 已关闭
 

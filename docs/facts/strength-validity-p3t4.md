@@ -3,13 +3,30 @@
 > 这份文档回答：正式引擎 `strength.jsonl` 的局均分位是否与名次、下一回合血量显著相关；在名次标签上相对 HDT 当场胜率有无增量；以及是否触碰 ADR-0003 / ADR-0014。
 
 ```text
-样本：BB 1.85.0.0；strength 30 局 / 329 己方场面（turn≤12）；团子配对有 placement 的局 7
+样本：BB 1.85.0.0；strength 30 局 / 329 己方场面（turn≤12）；团子配对有 placement 的局 7（2026-10-20 扩展见 §0）
 工具：python -m tools.strength_validity；方案 docs/design/P3-T4-validity.md
 健康：诊断 Input Player.Health（开战前）；本批 300 个 t→t+1 快照均为 input
 统计：Spearman + 局级 bootstrap CI（B=5000）+ 置换 p（B=5000）；显著 = CI 不含 0 且 p<0.05 且 n≥12（局）
-最后核实：2026-10-05
-证据：data/strength/validity_1.85.json、validity_1.85_po.json（本地 gitignore）
+最后核实：2026-10-20（C1 名次投影后重跑；旧 n=7 结果保留在下方）
+证据：data/strength/validity_1.85_c1c4.json、validity_1.88.6_c1c4.json、validity_1.85_c1c4_tuanzi_only.json（本地 gitignore）
 ```
+
+## 0. 2026-10-20 更新（名次标签扩展后）
+
+C1 把本地终局名次投影进标准层后，T4 的 `n` 从 7 增加；以下为 `maxTurn=12`、bootstrap/permutation=2000 的结果：
+
+| 版本 | n | 分位 vs −名次 ρ | p | HDT 五率 vs −名次 ρ | p | exit3 |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| 1.85.0.0 | 31 | **0.070** | 0.707 | **0.507** | 0.0036 | **fail** |
+| 1.88.6.0 | 25 | **0.277** | 0.179 | **0.678** | 0.0002 | **fail** |
+
+- 两版都不再是“样本不足”；**退出标准第 3 条未通过**。
+- `exit3` 报告 `adr0003=discuss_overturn`（材料是“建议讨论推翻”，不是自动推翻）；是否推翻由所有者决定。
+- 敏感性：1.85 只用团子名次（n=13）ρ=0.069，方向不变；1.88.6 tuanzi-only n=4，样本不足。
+- **标签 caveat：** raw `PLAYER_LEADERBOARD_PLACE` 是动态名次；`rawVsTuanzi` 14/18，1 局团子内部矛盾（`6ab052`），3 局 raw 比团子大 1（`20ad61`/`ed11e0`/`d7b573`）。结论应在复核这 3 局后确认。
+- 复跑命令见 `design/R-data-completeness-plan.md` §12；文件为 `data/strength/validity_1.85_c1c4.*` / `validity_1.88.6_c1c4.*`。
+
+> 以下 2026-10-05 的 n=7 结果保留为历史，不再代表当前数据。
 
 ## 1. 结论摘要（给所有者）
 

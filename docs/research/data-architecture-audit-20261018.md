@@ -10,7 +10,7 @@
 1. **战斗快照本身不是主要短板。** 上一次全量质量报告（55 局 / 640 回合，2026-10-05）里，非直接拔线回合 `ready` 为 631/638 = **98.9%**；当前 `data/standard/turns.jsonl` 已到 **933 行**，`strength.jsonl` 池 `1.85.0.0` 有 **663** 个己方场面。
 2. **`ready` 只保证“能复现 HDT 当场那次模拟的输入”，不保证“真实对局状态完整”。** 两者被同一个词覆盖了：`ready` 的定义只看单人、有 Combat Input/Output、非中途启用（`tools/standard_layer/status.py:16`）；系统性盲区（对手未知手牌、`2717`、对手花费等）只写 `gapFlags`、**不降级**（`status.py:25–29`）。所以 98.9% 不能回答“我们是否记录了该记录的全部数据”。
 3. **真正的缺口分三类：**
-   - **上下文没落进标准层**：名次、终局八人排名、规则上下文（畸变/种族/伤害上限/补丁）、英雄名、血量/护甲时间线。很多已经在原始层里，但标准层/引擎没有投影。
+   - **上下文没落进标准层**：名次、终局排名（自己 + 已出局者，见 G-02）、规则上下文（畸变/种族/伤害上限/补丁）、英雄名、血量/护甲时间线。很多已经在原始层里，但标准层/引擎没有投影。
    - **非战斗阶段没有结构化**：商店、金币、购买/出售/刷新/三连、英雄技能使用、方向和关键牌标注。原始 `power.log.gz` 有行，但没有解析器；插件也不在购物阶段拍快照。
    - **血缘/质量/版本不完整**：标准层不自包含、原始层分散且最先被删、质量报告过期、最新版本没有同版本重放和团子对照、`schemaVersion` 长期为 1、没有数据字典。
 4. **对当前 P3 分位：** 缺的主要不是 Input 字段，而是**名次/规则/样本/验证**；`ready` 指标本身是可信的（P2 有 78/78 对照），但其覆盖面停在 1.85 之前。
@@ -46,16 +46,20 @@
 
 优先级：**P0** 现在就该补（低成本、影响当前结论/下一步）；**P1** P4/P5 前补；**P2** 鲁棒性与覆盖。
 
+> **2026-10-20 实施状态：** C1–C4 已实施（见 [`design/R-data-completeness-plan.md`](../design/R-data-completeness-plan.md) §12）。G-01（本地名次）已投影，G-04（规则块）已进标准层/strength，G-18（质量报告/单一数据集）已刷新，G-19（1.88.6 同版本 roundtrip）978/978；但 G-02 完整八人排名仍不可得，C5/C8 未做，名次标签仍有 3 局 raw/团子差 1。
+
 ### 3.1 对局级上下文
 
 | ID | 优先级 | 缺口 | 现状与证据 | 影响 |
 | --- | --- | --- | --- | --- |
-| G-01 | **P0** | **名次（placement）没有写进标准层/复盘层** | 标准层 `placement` 只从团子配对取（`tools/standard_layer/__main__.py:48–50`）；当前 `turns.jsonl` 有 **803/933** 行 `placement=null`（约 86%），只有 130 行非空。原始层已有读取器 `tools/strength/raw_placement.py:37–88`，从 `game_end` 快照读本地玩家 `PLAYER_LEADERBOARD_PLACE`，但**只供 score-search 用（56 局），没有写回标准层/复盘页** | P3-T4 仍只能用 7 局团子名次；复盘页 `#名次` 常显示 `—`；P5 缺主标签 |
-| G-02 | **P0** | **终局八人排名/英雄/血量没有落盘** | 排行榜实体在 `entities@game_end` 里齐全，`reconstruct` 只用它算战斗胜负（`result.py:79–92`），`raw_placement` 只读本地玩家名次；没有“本局全部玩家最终名次”记录 | 无法做大厅强度、名次预测、对手分位分层；P5 的“本局定位”缺 |
+| G-01 | **P0（已部分补）** | **名次（placement）没有写进标准层/复盘层** | **2026-10-20 C1 已投影：`placement`/`placementRaw`/`placementSource`；当前 1724/1724 行有值，raw vs 团子 14/18（1 局团子内部矛盾回退 raw；3 局差 1 未解）。** 原始标签 `PLAYER_LEADERBOARD_PLACE` 是动态名次，不能无条件当最终名次 | 已可用于 T4/复盘，但 3 局标签待复核；P5 仍需“完整八人排名”时另找来源 |
+| G-02 | **P0（部分不可得）** | **“完整八人排名”没有落盘，而且不能只靠补投影** | `entities@game_end` 里 8 个英雄实体都在，但 `PLAYER_LEADERBOARD_PLACE` 是动态值/出局时才趋近最终：本地玩家提前出局时，仍在场的玩家名次不在本局日志里（插件在 `game_end` 已结束记录）。HDT 自己结束对局时也只取本地玩家的 `FinalPlacement`，大厅其他英雄只收 DbfId、不收名次（`Hearthstone Deck Tracker/GameEventHandler.cs:1069–1084`）。`raw_placement` 只读本地玩家名次（`score-search` 用过 56 局） | **能稳定拿到的是“自己的最终名次 + 截至自己出局时已出局玩家的名次”**；完整八人排名需要额外来源（HDT 对局历史 / 内存 / 观战续记，均未验证），P5 的“本局大厅定位”受此限制 |
 | G-03 | **P1** | **MMR/隐藏分变化未采集** | 插件 meta 只有版本/时间/错误计数（`GameSession.cs:54–65`），没有 MMR；本机 `BgsLastGames.xml` 结构未分析（[`local-environment.md`](../facts/local-environment.md)） | 愿景要求“可获取的 MMR 变化”；没有它无法验证“决策是否真的提升了水平” |
-| G-04 | **P0** | **规则上下文没有进标准层/战力行** | `Anomaly`、`availableRaces`、`DamageCap`、`duos` 在 Input/实体快照里有（[`bobsbuddy-simulator-input.md`](../facts/bobsbuddy-simulator-input.md) 第 2 节），标准行只保留 `duos` 布尔（`__main__.py:74–81`）；`strength.jsonl` 只有 `simPool` 和 `turn` | 参照池无法按“同规则”筛选；复算时无法证明“当时是什么大厅” |
+| G-04 | **P0（已补）** | **规则上下文没有进标准层/战力行** | **2026-10-20 C2 已补：标准行 `rules`（races/damageCap/anomaly/duos）+ `meta.hearthDbVersion`/`hearthstoneBuild`；`strength.jsonl` 663 行已回填 `rules`/`versions`。** 覆盖：races 1724/1724、damageCap 1710、anomaly 0、duos 0 | 规则已可查询/复算；但参照池还没有按规则分桶（当前仍 `simPool × turn`） |
 | G-05 | P2 | **座位/大厅玩家身份不保留** | 原始行用匿名化名字，标准层只有每回合对手英雄；没有座位号或跨回合大厅玩家标识 | “幽灵对手”“重复遇到同一对手”只能靠 CardId 猜；不影响当前分位，但影响 P5 的“运气/对局难度”归因 |
 | G-06 | P2 | **英雄名缺失且未回填** | 546/933 行 `myHero=null`（早期 `_playerHeroName` 未取到），但 `myHeroCard` 都在；`cards.zhCN.json` 可映射 | 复盘页显示、按英雄分桶都要额外查卡表；对账时多一步 |
+
+> **关于“八人排名”的修正：** 之前把“8 个英雄实体都在快照里”误当成“八人名次都在”。实际上 `PLAYER_LEADERBOARD_PLACE` 是**出局时**才确定的；自己提前出局后，剩余玩家的名次不在本局日志里。因此 G-02 只能作为“自己名次 + 已出局者名次”的补投影，不能宣称完整大厅排名。
 
 ### 3.2 非战斗阶段与决策数据（P5 的核心缺口）
 
@@ -83,9 +87,9 @@
 | ID | 优先级 | 缺口 | 现状与证据 | 影响 |
 | --- | --- | --- | --- | --- |
 | G-16 | **P0** | **标准层不自包含** | 行里只有 `inputRef`/`output` 摘要（`__main__.py:52–82`），没有场面、双方 Tier、血量、规则；`tools/strength` 和 `review_view` 都回读 L0（`pool.py:90–111`、`boards.py:12–34`） | raw 一旦被删/移动，标准层不能独立算分位或复盘；也无法做“只有标准层”的分享/迁移 |
-| G-17 | **P0** | **原始层分散、无 manifest、无校验** | 至少两个根：仓库 `data/BgHelperDiag` 与 `%APPDATA%\...\BgHelperDiag`；10-05 及之后的新局在后者（[`combat-result-reconstruction.md`](../facts/combat-result-reconstruction.md) 样本说明）。没有记录“哪些局已导入、从哪个根、何时、用什么工具版本”；没有 checksum/大小/备份清单 | 同一局可能重复导入或漏导入；删旧 raw 时无法知道哪些标准行会失效；异地采集/换机时不可复现 |
-| G-18 | **P0** | **质量报告过期且分散** | 最新全量 `data/standard/quality_report.*` 是 **55 局 / 640 回合**（2026-10-05）；`turns.jsonl` 已 933 行；1.88.6 的 80 行在 `standard_188_late` 单独报告（6 局、paired=0）；还有 `standard_20261010`、`standard_replay_sample`、`standard_paired7`、`standard_ed11e0` 等多份输出和 `.bak` | 没有单一“当前数据集”与当前质量；回归/对比时容易用错版本 |
-| G-19 | **P0** | **最新版本没有同版本重放/团子对照** | 旧报告 `replay.attempted=0`；Q-002 仍 investigating“1.88.6 同版本 roundtrip 尚未跑”；1.88.6 的两批数据（各 6 局）`paired=0`。P2 的 78/78 只覆盖到 1.85 | `ready` 的“可信”结论没有延续到当前主版本；P3 数据质量只能靠 1.85 的旧证据 |
+| G-17 | **P0（部分缓解）** | **原始层分散、无 raw manifest、无校验** | 至少两个根：仓库 `data/BgHelperDiag` 与 `%APPDATA%\...\BgHelperDiag`；10-05 及之后的新局在后者（[`combat-result-reconstruction.md`](../facts/combat-result-reconstruction.md) 样本说明）。**2026-10-20 C3 已写 `data/standard/dataset.json`（canonical turns/quality 的 sha256 + roots/counts），但仍没有逐局 raw 文件的 manifest/校验/备份索引** | 同一局可能重复导入或漏导入；删旧 raw 时仍无法知道哪些标准行会失效；异地采集/换机时不可复现 |
+| G-18 | **P0（部分缓解）** | **质量报告过期且分散** | **2026-10-20 已重新导入并刷新：`data/standard` 144 局 / 1724 回合，quality 与 turns 一致，canonical 入口 `dataset.json`**；旧的 `standard_188_late` / `standard_20261010` / `standard_replay_sample` / `standard_paired7` / `standard_ed11e0` 仍作为历史目录保留，没有自动清理/标记 | 仍有“当前/历史”混放风险；回归/对比时容易用错版本 |
+| G-19 | **P0（已补同版本往返）** | **最新版本没有同版本重放/团子对照** | **2026-10-20：1.88.6 同版本 roundtrip 978/978（81 局，JSON `data/strength/roundtrip_188_full.json`）**；但 1.88.6 仍没有团子文本（`paired=0`），所以“团子对照”仍缺。P2 的 78/78 只覆盖到 1.85 | `ready` 的“可信”结论现在覆盖到 1.88.6 的 Input→Output；但外部标签对照仍只到 1.85 |
 | G-20 | **P0** | **schema 版本没有演进记录** | 插件 0.1.0 → 0.2.0（匿名化修复 + 局末压缩），`schemaVersion` 仍为 1（`GameSession.cs:18, 56`）；导入侧还有键名修复（`combat.py:16–51`），但行里没有 `anonymizerVersion`/`importVersion` | 消费方无法区分“0.1.0 腐蚀过的旧行”和“0.2.0 干净行”；以后改 schema 没有迁移依据 |
 | G-21 | P2 | **匿名校验/展示字段混入 token** | 1.88.6 行里见到 `oppHero` 形如 `无限巨龙player_7e690796`（`turns.jsonl` 第 663 行）：这是匿名化后的玩家名 token 与英雄名拼在一起，不是泄露，但会破坏“按英雄名”分组和展示；0.1.0 的键名腐蚀只在导入侧修复 | 按 `myHero`/`oppHero` 分桶会出错；导出/展示需要清洗或改用 CardId |
 | G-22 | **P1** | **架构文档没有数据字典** | `docs/architecture/overview.md` 虽然提到 ADR-0015（模拟池），但“最后更新”仍写 2026-10-05；没有 ADR-0016/0017/0019（得分公式）、score-policy、对手分位、dummy-ladder；也没有任何一份“存储 schema/字段清单” | 新人/新 agent 只能从代码反推字段；改 schema 时不知道谁依赖 |
@@ -101,9 +105,11 @@
 
 ## 4. 建议补法（按优先级）
 
+> **2026-10-19 重评：** 完整八人排名已判定**不可行**（G-02 已降级：客户端结束时不提供剩余玩家名次）；按“价值 / 成本 / 数据是否已经存在”重新排序后的计划见 [`design/R-data-completeness-plan.md`](../design/R-data-completeness-plan.md)。下面 P0/P1/P2 是初版，执行顺序以新计划的 Wave 1/2/3 为准；其中“标准层完全自包含”已降为缓办，优先 thin standard + raw manifest。
+
 ### P0：现在就能做，且大多不需要改插件
 
-1. **从原始层提取对局级事实**：终局排行榜 → `placement`、八人名次/英雄/血量；每场战斗前后的排行榜血量 → HP/护甲时间线。`power_replay.py` 与 `tools/strength/raw_placement.py` 已有本地玩家名次的读取基础，只差标准层投影与“八人”扩展。
+1. **从原始层提取对局级事实**：终局排行榜 → 自己的 `placement`、截至自己出局时已出局玩家的名次/血量；每场战斗前后的排行榜血量 → HP/护甲时间线。`power_replay.py` 与 `tools/strength/raw_placement.py` 已有本地玩家名次的读取基础，只差标准层投影；**完整八人排名另评估来源，不要当成已有数据**。
 2. **规则块进标准层和战力行**：`anomaly`、`availableRaces`、`damageCap`、`duos`、`hdtVersion`、`hearthDbVersion`、`hearthstoneBuild`、`simPool`。这是“可复算”和“同规则参照池”的最小集。
 3. **机器可读完整性**：`unknowns`（分类计数：未知手牌/未知奥秘/`2717`/对手花费/未支持卡）、`simQuality`（`exitCondition`、`simulationCount`、是否超时、`damageResults` 摘要）、`rerunCount`。`ready` 保留原定义，作为“可复现性”字段；另加 `stateCompleteness`（`complete`/`partial`/`blindSpots`）。
 4. **标准层自包含**：至少把 `board`（双方随从列表/顺序）、`tier`、`hp`、`rules`、`unknowns` 写进行；或者明确“标准层永远依赖 raw 归档”，并给 raw 做 manifest + 校验 + 保留承诺。两者选一，写进 ADR。

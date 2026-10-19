@@ -203,6 +203,42 @@ def get_player_obj(inp: dict, which: str) -> Optional[dict]:
     return None
 
 
+def _race_list(value) -> list | None:
+    """Normalize BB Input's serialized List<Race> or the context JArray."""
+    if isinstance(value, list):
+        return value
+    if isinstance(value, dict):
+        items = value.get("items")
+        if isinstance(items, list):
+            return items
+        values = value.get("$values")
+        if isinstance(values, list):
+            return values
+    return None
+
+
+def rules_block(combat: dict, meta: dict) -> dict:
+    """Per-game rules context that should travel with every standard-layer row.
+
+    ``availableRaces``/``DamageCap`` come from HDT's Input when present; the
+    entity snapshot context is the fallback for rows without a usable Input.
+    Missing values stay ``None`` (unknown), never an empty list or 0 default.
+    """
+    inp = combat.get("input") if isinstance(combat.get("input"), dict) else {}
+    ctx = combat.get("context") if isinstance(combat.get("context"), dict) else {}
+    races = _race_list(inp.get("availableRaces"))
+    if races is None:
+        races = _race_list(ctx.get("availableRaces"))
+    anomaly = ctx.get("anomalyDbfId")
+    damage_cap = inp.get("DamageCap")
+    return {
+        "availableRaces": races,
+        "anomalyDbfId": anomaly,
+        "damageCap": damage_cap,
+        "duos": bool(meta.get("isBattlegroundsDuosMatch")),
+    }
+
+
 def list_items(node: Any) -> list:
     if isinstance(node, list):
         return node
