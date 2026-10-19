@@ -26,7 +26,7 @@
 - 新增审计：`docs/research/data-architecture-audit-20261018.md`（20 项缺口，按 P0/P1/P2 分级）。
 - 新增未决问题：`docs/research/open-questions.md` Q-022（经济/操作数据是否 P4 前补，还是只保 raw）。
 - `docs/status.md` 已更新（最近完成 / 下一步 / 待决）。
-- 未改代码、未改数据；2026-10-19 由主会话随 v2 一起提交。
+- 未改代码、未改数据；2026-10-19 随本次提交合入 `main`。
 
 ## 下一步
 

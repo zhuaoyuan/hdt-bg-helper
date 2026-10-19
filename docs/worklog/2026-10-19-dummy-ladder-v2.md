@@ -59,4 +59,4 @@
 - 方案：`docs/design/R-dummy-ladder-v2.md`（implemented + verified）。
 - 事实：`docs/facts/dummy-ladder-v2-20261019.md`。
 - 本地输出（gitignore）：`spikes/dummy-ladder/out-adaptive/`、`out-adaptive-smoke/`、`out-adaptive-all/`（全回合）、`out-wide/curves-model.json`、`cross-dll/compare.json`。
-- 未改 `strength.jsonl`；未并入 `main`。
+- 未改 `strength.jsonl`；已合入 `main`（v2 `865a9aa`，数据架构复核 `0256fb0`，2026-10-19）。
