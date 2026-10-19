@@ -14,7 +14,9 @@ lib/
 
 # Spike outputs derived from closed-source assemblies (e.g. API dumps); keep local only
 spikes/**/out/
+spikes/**/out-*/
 spikes/**/out_*/
+spikes/**/cross-dll/
 
 # Collected game data (personal, may contain player identifiers)
 data/

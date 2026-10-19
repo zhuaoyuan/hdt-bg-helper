@@ -51,6 +51,7 @@
 | [`score-policy-search-raw-place-20261011.md`](score-policy-search-raw-place-20261011.md) | 同一搜索改用局末排行榜名次（56 局）：\(t_1=15\) 略高于基线，字面有效；分位文件仍未换 |
 | [`score-policy-search-v2-20261011.md`](score-policy-search-v2-20261011.md) | 第二轮 10 条曲线：确认半中段提升约 0.003，未过 0.05 门；未换 `strength.jsonl`（2026-10-11） |
 | [`dummy-ladder-20261018.md`](dummy-ladder-20261018.md) | 旁路：7 个相同木桩的 \(X_{50}\) 绝对值；同回合与分位 Spearman≈0.95（2026-10-18） |
+| [`dummy-ladder-v2-20261019.md`](dummy-ladder-v2-20261019.md) | 旁路 v2：logistic 位置 + 区间 + 自适应采集；与 v1 Spearman 0.9992；跨 DLL 0.9999；ΔAUC(模型−分位) −0.0445（t6/8/10）/−0.0425（全回合），CI 均不含 0（2026-10-19） |
 | [`hdt-past-opponent-board-render.md`](hdt-past-opponent-board-render.md) | HDT 上次对手阵容叠加层实现；诊断 dump 是否足以离线渲染阵容图（2026-10-05） |
 | [`bobsbuddy-minion-enchantments.md`](bobsbuddy-minion-enchantments.md) | 随从附着附魔 → BB `Minion` 字段映射全表（上一份的附表） |
 | [`local-environment.md`](local-environment.md) | 所有者本机实际运行的 HDT 版本、数据目录、可用工具 |
