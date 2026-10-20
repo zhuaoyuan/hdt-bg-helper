@@ -1,7 +1,7 @@
 # 聚焦检验：亡灵 / 野猪人（以及 Q-023 两族）在大厅种族池中是否改变 X50 战力
 
 - **日期：** 2026-10-20
-- **状态：** 探索性分析的聚焦复核（分支 `explore/race-pool-x50`；不改 `strength.jsonl`、不改分位算法）。在上一份全扫描报告 `race-pool-x50-20261020.md` 之后，按所有者建议**不再按种族组合或全种族×回合扫描**，只检验少量“影响力大的种族是否存在”。
+- **状态：** 探索性分析的聚焦复核（已合入 `main`；不改 `strength.jsonl`、不改分位算法）。在上一份全扫描报告 `race-pool-x50-20261020.md` 之后，按所有者建议**不再按种族组合或全种族×回合扫描**，只检验少量“影响力大的种族是否存在”。
 - **数据：** 木桩梯队 v2 `spikes/dummy-ladder/out-adaptive-all/curves.json`（X50，1.88.6 DLL；1321 板 / 112 局）+ 标准层 `data/standard/turns.jsonl` 的 `rules.availableRaces`。
 - **工具：** `spikes/race-x50/focus.py`；输出 `spikes/race-x50/out-focus/focus.json`、`boards_focus.csv`、`games_focus.csv`（本地 gitignore）。
 - **口径：** 只用 `status=interior` 的板；X50 只在 t5 以后可用；种族池每局为常数、恰好 5 个种族，所以**所有种族效应都是局级变量**，推断按局聚类。
