@@ -44,3 +44,21 @@ python spikes\dummy-ladder\bootstrap_outcomes.py --curves spikes\dummy-ladder\ou
 ```
 
 `out/`、`out-wide/`、`out-adaptive*/` 等由 `.gitignore` 的 `spikes/**/out*/` 系列规则忽略。模拟用本机 `C:\Program Files\HDT` 的 BobsBuddy 1.88.6.0。
+
+## 对手侧 X50（同一 v2 管线）
+
+```powershell
+# 冒烟
+python spikes\dummy-ladder\run_adaptive.py --pool 1.88.6.0 --turns 6 --side opponent --limit 6 --out spikes\dummy-ladder\out-opp-smoke
+# 全量：81 局 / 937 板，约 3.6 分钟
+python spikes\dummy-ladder\run_adaptive.py --pool 1.88.6.0 --turns 1-17 --side opponent --out spikes\dummy-ladder\out-opp-188
+# 校验：A 己方侧回归 / B 侧对称性 ground truth / C 量纲，结果写 out-opp-188/validation.json
+python spikes\dummy-ladder\verify_side_opp.py
+```
+
+`--side opponent` 时 job 带 `"measureSide": "opponent"`，DummySim 用 7 个木桩替换 `Input.Player`、保留真实 `Input.Opponent`（`player` 模式则相反，行为不变）。DummySim 的输出**始终**是木桩侧（`Input.Player`）的 win/tie/loss，所以 `merge_rows` 在 opponent 模式下把 win/loss 对调，估计量依旧拟合「真实板视角」的 P(win)。
+
+注意：把一个己方 minion 搬到他侧时必须把 `ControlledByPlayer` 递归改成 `false`（`verify_side_opp.py` 的 `swap_false` 变体）；保留 `true` 会让战斗退化（木桩 1/1 也能 99.5% 胜）。真实 dump 的对手 minion 本来就是 `false`，因此主流程不受影响。
+
+对手侧结论（1.88.6.0，966 board 中 38 块对手空场被跳过、另补 9 块己方空场，共 937 板）：interior 799 / below 136 / above 2，中位 CI 宽 0.148 log2；与己方 X50 分回合中位数比值 0.82–1.24（t13 后样本稀疏），Spearman(log2 X50, 场面 sum(atk+hp))=0.98。详见 `out-opp-188/validation.json`。
+

@@ -158,11 +158,36 @@ namespace ReplaySim
 						var atk = job.Value<int?>("attack") ?? 1;
 						var hp = job.Value<int?>("health") ?? atk;
 						var count = job.Value<int?>("count") ?? 7;
-						var fresh = MakeFreshOpponent(input);
-						FillSide(simulator, fresh, atk, hp, count, cardId, false, 8000);
+						// measureSide decides which of the two real boards is kept:
+						// "player" (default) replaces Input.Opponent with the dummies and
+						// measures the real Player board; "opponent" replaces Input.Player
+						// with the dummies and measures the real Opponent board. The output
+						// win/tie/loss rates are always the dummy side's (Input.Player's).
+						var measureSide = (job.Value<string>("measureSide") ?? "player").Trim().ToLowerInvariant();
+						string replaceSide;
+						bool dummyFriendly;
+						int gameIdBase;
+						if(measureSide == "player")
+						{
+							replaceSide = "Opponent";
+							dummyFriendly = false;
+							gameIdBase = 8000;
+						}
+						else if(measureSide == "opponent")
+						{
+							replaceSide = "Player";
+							dummyFriendly = true;
+							gameIdBase = 100;
+						}
+						else
+						{
+							throw new ArgumentException("measureSide must be \"player\" or \"opponent\", got: " + measureSide);
+						}
+						var fresh = MakeFreshSide(input, replaceSide);
+						FillSide(simulator, fresh, atk, hp, count, cardId, dummyFriendly, gameIdBase);
 						SetInt(fresh, "Health", 40);
 						SetInt(fresh, "Tier", 1);
-						SetMember(input, "Opponent", fresh);
+						SetMember(input, replaceSide, fresh);
 						typeof(Hydrator).GetMethod("WireBoardReferences", BindingFlags.Instance | BindingFlags.NonPublic)
 							.Invoke(hydrator, new[] { input });
 
@@ -177,6 +202,7 @@ namespace ReplaySim
 							["health"] = hp,
 							["count"] = count,
 							["cardId"] = cardId,
+							["measureSide"] = measureSide,
 							["elapsedMs"] = sw.ElapsedMilliseconds,
 							["winRate"] = Rate(output, "winRate"),
 							["tieRate"] = Rate(output, "tieRate"),
@@ -195,11 +221,11 @@ namespace ReplaySim
 			}
 		}
 
-		private static object MakeFreshOpponent(object input)
+		private static object MakeFreshSide(object input, string sideName)
 		{
-			var old = GetMember(input, "Opponent");
+			var old = GetMember(input, sideName);
 			if(old == null)
-				throw new InvalidOperationException("hydrated input has no Opponent");
+				throw new InvalidOperationException("hydrated input has no " + sideName);
 			var playerType = old.GetType();
 			foreach(var ctor in playerType.GetConstructors(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
 			{

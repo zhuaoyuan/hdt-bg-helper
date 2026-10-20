@@ -19,6 +19,13 @@ Usage:
     python spikes/dummy-ladder/run_adaptive.py --selftest       # estimator checks, no BB
     python spikes/dummy-ladder/run_adaptive.py --coarse ratio4 --turns 6,8,10
     python spikes/dummy-ladder/run_adaptive.py --limit 20 --out spikes/dummy-ladder/out-adaptive-smoke
+    python spikes/dummy-ladder/run_adaptive.py --pool 1.88.6.0 --turns 1-17 --side opponent \\
+        --out spikes/dummy-ladder/out-opp-188
+
+``--side opponent`` keeps the real Opponent board and replaces Input.Player with
+the dummies (DummySim ``measureSide``), giving the opponent-side X50. DummySim
+always reports the dummy side's rates, so in that mode win/loss are swapped back
+to the real board's perspective before fitting.
 
 The DummySim.exe must be built first (see spikes/dummy-ladder/README.md).
 Outputs stay under the chosen --out directory (gitignored).
@@ -84,7 +91,18 @@ def parse_turns(text: str) -> set[int]:
     return out
 
 
-def collect_boards(pool: str, turns: set[int]) -> list[dict]:
+def collect_boards(pool: str, turns: set[int], side: str = "player") -> list[dict]:
+    """Collect one board per (game, turn) combat.
+
+    ``side="player"`` keeps the real Player board and replaces Input.Opponent
+    with the dummies (the v1/v2 default). ``side="opponent"`` keeps the real
+    Opponent board and replaces Input.Player with the dummies (DummySim
+    ``measureSide``), giving the opponent-side X50.
+    """
+    if side not in ("player", "opponent"):
+        raise ValueError(f"unknown side: {side}")
+    index = 0 if side == "player" else 1
+    suffix = "Player" if side == "player" else "Opponent"
     roots = [
         str(_REPO / "data" / "BgHelperDiag"),
         os.path.expandvars(r"%APPDATA%\HearthstoneDeckTracker\BgHelperDiag"),
@@ -92,7 +110,7 @@ def collect_boards(pool: str, turns: set[int]) -> list[dict]:
     allowed = set(member_versions(pool))
     by_id: dict[str, dict] = {}
     games = discover_games(roots)
-    print(f"indexing {len(games)} game dirs (pool {pool}, turns {sorted(turns)})", flush=True)
+    print(f"indexing {len(games)} game dirs (pool {pool}, turns {sorted(turns)}, side {side})", flush=True)
     for gid, gdir in sorted(games.items()):
         try:
             meta = load_meta(gdir)
@@ -116,10 +134,11 @@ def collect_boards(pool: str, turns: set[int]) -> list[dict]:
                 continue
             if not isinstance(combat.get("input"), dict):
                 continue
-            player_board, _opp = board_from_input(combat["input"])
-            if not player_board:
+            boards = board_from_input(combat["input"])
+            board = boards[index]
+            if not board:
                 continue
-            bid = f"{gid}|t{turn}|Player"
+            bid = f"{gid}|t{turn}|{suffix}"
             by_id[bid] = {
                 "boardId": bid,
                 "gameId": gid,
@@ -178,7 +197,16 @@ def run_jobs(jobs: list[dict], out_dir: Path, tag: str, iterations: int,
 
 
 def merge_rows(rows: list[dict], points: dict[str, dict[int, Point]],
-               iterations: int, errors: list[dict]) -> None:
+               iterations: int, errors: list[dict], side: str = "player") -> None:
+    """Merge batch rows into per-board rung points.
+
+    DummySim always reports the dummy side's win/tie/loss (the dummy side is
+    Input.Player in both modes). In ``player`` mode the dummies are the
+    opponent, so those rates are already the real board's. In ``opponent`` mode
+    the dummies are Input.Player, so win and loss are swapped back to the real
+    board's perspective before fitting: the estimator models
+    P(real board wins), which must decrease with the dummy stat level.
+    """
     for row in rows:
         if not row.get("ok"):
             errors.append(row)
@@ -186,12 +214,12 @@ def merge_rows(rows: list[dict], points: dict[str, dict[int, Point]],
         bid = str(row["id"]).rsplit("|L", 1)[0]
         level = int(row["attack"])
         n = float(row.get("simulationCount") or iterations)
-        points.setdefault(bid, {})[level] = Point(
-            level,
-            float(row["winRate"]) * n,
-            float(row["tieRate"]) * n,
-            float(row["lossRate"]) * n,
-        )
+        wins = float(row["winRate"]) * n
+        ties = float(row["tieRate"]) * n
+        losses = float(row["lossRate"]) * n
+        if side == "opponent":
+            wins, losses = losses, wins
+        points.setdefault(bid, {})[level] = Point(level, wins, ties, losses)
 
 
 def status_of(points: dict[int, Point]) -> str:
@@ -225,6 +253,8 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--pool", default="1.85.0.0")
     ap.add_argument("--turns", default="6,8,10")
+    ap.add_argument("--side", choices=("player", "opponent"), default="player",
+                    help="which real board to measure: player (default) or opponent")
     ap.add_argument("--out", type=Path, default=_HERE / "out-adaptive")
     ap.add_argument("--coarse", choices=("ratio2", "ratio4"), default="ratio4")
     ap.add_argument("--iterations", type=int, default=500)
@@ -243,7 +273,7 @@ def main() -> int:
     out_dir.mkdir(parents=True, exist_ok=True)
     t0 = time.time()
 
-    boards = collect_boards(args.pool, parse_turns(args.turns))
+    boards = collect_boards(args.pool, parse_turns(args.turns), side=args.side)
     if args.limit:
         boards = boards[: args.limit]
     if not boards:
@@ -267,9 +297,10 @@ def main() -> int:
     for board in boards:
         for level in coarse:
             jobs.append({"id": f"{board['boardId']}|L{level}", "inputPath": board["inputPath"],
-                         "attack": level, "health": level, "count": 7})
+                         "attack": level, "health": level, "count": 7,
+                         "measureSide": args.side})
     rows = run_jobs(jobs, out_dir, "round0", args.iterations, args.threads, args.max_duration)
-    merge_rows(rows, points, args.iterations, errors)
+    merge_rows(rows, points, args.iterations, errors, side=args.side)
     if not any(points.get(bid) for bid in rounds):
         raise SystemExit("round 0 produced no ok rows; check DummySim.exe and --bb-dir")
     for bid in rounds:
@@ -301,13 +332,14 @@ def main() -> int:
                 if level in have or level < 1 or level > CAP_LEVEL:
                     continue
                 jobs.append({"id": f"{bid}|L{level}", "inputPath": board["inputPath"],
-                             "attack": level, "health": level, "count": 7})
+                             "attack": level, "health": level, "count": 7,
+                             "measureSide": args.side})
                 touched.add(bid)
         if not jobs:
             break
         rows = run_jobs(jobs, out_dir, f"round{r + 1}", args.iterations,
                         args.threads, args.max_duration)
-        merge_rows(rows, points, args.iterations, errors)
+        merge_rows(rows, points, args.iterations, errors, side=args.side)
         for bid in touched:
             rounds[bid] += 1
 
@@ -343,7 +375,7 @@ def main() -> int:
             ci_widths.append(math.log2(ci[1] / ci[0]))
     sims = [row["sims"] for row in curves if row["sims"]]
     rungs = [row["nPoints"] for row in curves if row["nPoints"]]
-    print(f"boards={len(curves)} status={dict(by_status)}")
+    print(f"boards={len(curves)} status={dict(by_status)} side={args.side}")
     print(f"median rungs/board={median(rungs)} median sims/board={median(sims)} "
           f"total sims={sum(sims)} wall={wall:.1f}s")
     med_ci = median(ci_widths)
@@ -371,6 +403,7 @@ def main() -> int:
     summary = {
         "pool": args.pool,
         "turns": sorted(parse_turns(args.turns)),
+        "side": args.side,
         "coarse": args.coarse,
         "coarse_levels": coarse,
         "iterations": args.iterations,
