@@ -702,7 +702,9 @@ def main() -> int:
                        "nPresent": e["nPresent"], "nAbsent": e["nAbsent"]}
     results["trimUnreliable"] = {
         "gamesUsed": int(valid_trim.sum()),
-        "note": "boards with se>0.5 or missing CI dropped; ~20% of boards, balanced across race groups.",
+        "note": ("boards with se>0.5 or missing CI dropped. The dropped fraction is turn-dependent "
+                 "(t5 ~50%, t8 ~9%) and only MECHANICAL shows a count imbalance (17.1% vs 23.5%); "
+                 "it is a descriptive sensitivity, not a like-for-like comparison."),
         "effects": eff_trim,
     }
 
