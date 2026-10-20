@@ -108,49 +108,70 @@ def bh_q(values: list[float]) -> list[float]:
     return q
 
 
-def design_matrix(rows: list[dict], turn_fe: bool) -> np.ndarray:
+def build_design(rows: list[dict], turn_fe: bool = True, version_fe: bool = False,
+                 version_interaction: bool = False) -> tuple[np.ndarray, list[str]]:
+    """OLS design; keeps coefficient names so callers can address version terms."""
+    n = len(rows)
     seqs = np.array([r["seq"] for r in rows], dtype=float)
-    x = (seqs - seqs.mean()).reshape(-1, 1)
-    cols = [np.ones((len(rows), 1)), x]
+    x = seqs - seqs.mean()
+    cols = [np.ones((n, 1)), x.reshape(-1, 1)]
+    names = ["intercept", "seq"]
     if turn_fe:
         turns = sorted({r["turn"] for r in rows})
         for t in turns[1:]:
-            cols.append(np.array([[1.0 if r["turn"] == t else 0.0] for r in rows]))
-    return np.hstack(cols)
+            d = np.array([1.0 if r["turn"] == t else 0.0 for r in rows])
+            cols.append(d.reshape(-1, 1))
+            names.append(f"turn[{t}]")
+    if version_fe:
+        versions = sorted({r["version"] for r in rows})
+        for v in versions[1:]:
+            d = np.array([1.0 if r["version"] == v else 0.0 for r in rows])
+            cols.append(d.reshape(-1, 1))
+            names.append(f"version[{v}]")
+            if version_interaction:
+                cols.append((x * d).reshape(-1, 1))
+                names.append(f"seq:version[{v}]")
+    return np.hstack(cols), names
 
 
-def fit_slope(rows: list[dict], turn_fe: bool = True) -> float:
-    X = design_matrix(rows, turn_fe)
+def fit_beta(rows: list[dict], **kw) -> dict[str, float]:
+    X, names = build_design(rows, **kw)
     y = np.array([r["y"] for r in rows], dtype=float)
     beta, *_ = np.linalg.lstsq(X, y, rcond=None)
-    return float(beta[1])
+    return {name: float(b) for name, b in zip(names, beta)}
 
 
-def cluster_bootstrap(rows: list[dict], B: int, seed: int, turn_fe: bool = True) -> np.ndarray:
+def cluster_bootstrap_beta(rows: list[dict], B: int, seed: int,
+                           **kw) -> dict[str, np.ndarray]:
+    X, names = build_design(rows, **kw)
+    y = np.array([r["y"] for r in rows], dtype=float)
     rng = np.random.default_rng(seed)
     games = sorted({r["gameId"] for r in rows})
-    by_game: dict[str, list[dict]] = {}
-    for r in rows:
-        by_game.setdefault(r["gameId"], []).append(r)
-    out = np.empty(B)
+    idx_by_game: dict[str, list[int]] = {g: [] for g in games}
+    for i, r in enumerate(rows):
+        idx_by_game[r["gameId"]].append(i)
+    out = np.empty((B, X.shape[1]))
     for b in range(B):
         pick = rng.choice(len(games), size=len(games), replace=True)
-        sample: list[dict] = []
-        for i in pick:
-            sample.extend(by_game[games[i]])
-        out[b] = fit_slope(sample, turn_fe)
-    return out
+        idx = [i for j in pick for i in idx_by_game[games[j]]]
+        beta, *_ = np.linalg.lstsq(X[idx], y[idx], rcond=None)
+        out[b] = beta
+    return {name: out[:, j] for j, name in enumerate(names)}
 
 
-def summarize_slope(rows: list[dict], label: str, B: int, seed: int) -> dict:
-    b = fit_slope(rows)
-    dist = cluster_bootstrap(rows, B, seed)
+def _pct10(beta: float) -> float:
+    return (2 ** (10 * beta) - 1) * 100
+
+
+def summarize_slope(rows: list[dict], label: str, B: int, seed: int,
+                    version_fe: bool = False) -> dict:
+    coefs = fit_beta(rows, version_fe=version_fe)
+    boot = cluster_bootstrap_beta(rows, B, seed, version_fe=version_fe)
+    b = coefs["seq"]
+    dist = boot["seq"]
     lo, hi = np.percentile(dist, [2.5, 97.5])
     p = 2 * min((dist >= 0).mean(), (dist <= 0).mean())
     p = min(1.0, float(p))
-    # per-10-games percent change; log2 slope -> ratio 2^(10 b)
-    def pct(beta):
-        return (2 ** (10 * beta) - 1) * 100
 
     n_games = len({r["gameId"] for r in rows})
     span = max(1, n_games - 1)
@@ -163,14 +184,50 @@ def summarize_slope(rows: list[dict], label: str, B: int, seed: int) -> dict:
         "n": len(rows),
         "nGames": n_games,
         "slopeLog2PerGame": b,
-        "pctPer10Games": pct(b),
-        "ci95PctPer10Games": [pct(lo), pct(hi)],
+        "pctPer10Games": _pct10(b),
+        "ci95PctPer10Games": [_pct10(lo), _pct10(hi)],
         "totalDriftPct": total(b),
         "ci95TotalDriftPct": [total(lo), total(hi)],
         "pBootstrap": p,
         "bootSd": float(dist.std(ddof=1)),
-        "mde80PctPer10Games": pct((1.96 + 0.84) * float(dist.std(ddof=1))),
+        "mde80PctPer10Games": _pct10((1.96 + 0.84) * float(dist.std(ddof=1))),
     }
+
+
+def summarize_version_effect(rows: list[dict], B: int, seed: int) -> dict:
+    """Step (level) and slope differences of later versions vs the earliest one,
+    after the seq + turn fixed effects. The version dummy is exactly a step at the
+    version boundary, so it absorbs any cross-version (in)compatibility shift."""
+    coefs = fit_beta(rows, version_fe=True, version_interaction=True)
+    boot = cluster_bootstrap_beta(rows, B, seed, version_fe=True,
+                                  version_interaction=True)
+    versions = sorted({r["version"] for r in rows})
+
+    def pct(v):
+        return (2 ** v - 1) * 100
+
+    out: dict = {"baseline": versions[0], "nGames": len({r["gameId"] for r in rows})}
+    for v in versions[1:]:
+        step = coefs[f"version[{v}]"]
+        sdist = boot[f"version[{v}]"]
+        slo, shi = np.percentile(sdist, [2.5, 97.5])
+        sp = min(1.0, float(2 * min((sdist >= 0).mean(), (sdist <= 0).mean())))
+        inter = coefs[f"seq:version[{v}]"]
+        idist = boot[f"seq:version[{v}]"]
+        ilo, ihi = np.percentile(idist, [2.5, 97.5])
+        ip = min(1.0, float(2 * min((idist >= 0).mean(), (idist <= 0).mean())))
+        out[f"vs[{versions[0]}]"] = {
+            "laterVersion": v,
+            "levelDiffLog2": step,
+            "levelDiffPct": pct(step),
+            "ci95LevelDiffPct": [pct(slo), pct(shi)],
+            "pLevel": sp,
+            "slopeDiffLog2PerGame": inter,
+            "slopeDiffPctPer10Games": _pct10(inter),
+            "ci95SlopeDiffPctPer10Games": [_pct10(ilo), _pct10(ihi)],
+            "pSlopeDiff": ip,
+        }
+    return out
 
 
 def per_turn_trend(rows: list[dict], side: str) -> list[dict]:
@@ -216,6 +273,7 @@ def main() -> int:
                       ("x50", "log2x50", "ciLow", "ciHigh", "seLog2"))
     games = load_csv(args.out / "games.csv",
                      ("meMeanLog2", "oppMeanLog2", "intensityMeanLog2"))
+    half_cut = len(games) // 2  # early = seq <= half_cut, late = the rest
     has_opp = any(r["side"] == "opp" for r in boards)
 
     # --- main sample: interior, turns 5-12
@@ -242,6 +300,18 @@ def main() -> int:
         "perTurn": {},
         "robustness": {},
         "intensity": {},
+    }
+
+    versions = sorted({r.get("version") for r in boards if r.get("version")})
+    result["versions"] = {
+        "set": versions,
+        "multiVersion": len(versions) > 1,
+        "gamesByVersion": {v: len({r["gameId"] for r in boards if r.get("version") == v})
+                           for v in versions},
+        "boardsMainByVersion": {v: {s: sum(1 for r in main_rows
+                                           if r["version"] == v and r["side"] == s)
+                                    for s in ("me", "opp")}
+                                for v in versions},
     }
 
     # --- per-turn chronological series + trailing MA (log2 space)
@@ -285,6 +355,7 @@ def main() -> int:
     for (gid, t), d in pairs.items():
         if "me" in d and "opp" in d:
             intensity_rows.append({"gameId": gid, "seq": d["me"]["seq"], "turn": t,
+                                   "version": d["me"]["version"],
                                    "y": 0.5 * (d["me"]["log2x50"] + d["opp"]["log2x50"])})
     if has_opp and intensity_rows:
         result["intensity"]["trend"] = summarize_slope(intensity_rows, "intensity",
@@ -300,6 +371,48 @@ def main() -> int:
             str(t): float(np.median([r["y"] for r in ratio_rows if r["turn"] == t]))
             for t in sorted({r["turn"] for r in ratio_rows})
         }
+
+    # --- cross-version checks: only meaningful when the table mixes versions.
+    # The version dummy is a clean step at the version boundary, so it separates
+    # "compatibility shift" from a within-version time trend.
+    if len(versions) > 1:
+        ext: dict = {"baseline": versions[0]}
+        for side in ("me", "opp"):
+            if side == "opp" and not has_opp:
+                continue
+            rows = [dict(r, y=r["log2x50"]) for r in main_rows
+                    if r["side"] == side and r["log2x50"] is not None]
+            ext[side] = {
+                "trendWithVersionFE": summarize_slope(rows, side, args.bootstrap,
+                                                      seed=37, version_fe=True),
+                "versionEffect": summarize_version_effect(rows, args.bootstrap, seed=41),
+                "within": {
+                    v: summarize_slope([r for r in rows if r["version"] == v],
+                                       f"{side}@{v}", args.bootstrap, seed=47 + i)
+                    for i, v in enumerate(versions)
+                    if len({r["gameId"] for r in rows if r["version"] == v}) > 1
+                },
+            }
+        if intensity_rows:
+            ext["intensity"] = {
+                "trendWithVersionFE": summarize_slope(intensity_rows, "intensity",
+                                                      args.bootstrap, seed=53,
+                                                      version_fe=True),
+                "versionEffect": summarize_version_effect(intensity_rows,
+                                                          args.bootstrap, seed=59),
+            }
+        # BH across the version-step tests (me/opp/intensity level steps)
+        steps = []
+        for key in ("me", "opp", "intensity"):
+            eff = (ext.get(key) or {}).get("versionEffect") or {}
+            for vkey, val in eff.items():
+                if isinstance(val, dict) and "pLevel" in val:
+                    steps.append(val)
+        if steps:
+            qs = bh_q([s["pLevel"] for s in steps])
+            for s, q in zip(steps, qs):
+                s["qLevel"] = q
+        result["extended"] = ext
 
     # --- BH across the three primary tests (me / opp / intensity)
     prim = []
@@ -368,14 +481,17 @@ def main() -> int:
 
     # --- robustness
     rob = result["robustness"]
-    # (a) first 40 vs last 41 games, pooled over turns 5-12
-    for side in ("me", "opp"):
-        if side == "opp" and not has_opp:
+    # (a) early vs late half of the games, on the turn-adjusted index (so the
+    # split is not confounded by turn mix / survival); intensity included.
+    for key in ("me", "opp", "intensity"):
+        rows = index.get(key) or []
+        if not rows:
             continue
-        rows = [r for r in main_rows if r["side"] == side]
-        early = [r["y"] for r in rows if r["seq"] <= 40]
-        late = [r["y"] for r in rows if r["seq"] > 40]
-        rob[f"halves_{side}"] = {
+        early = [r["index"] for r in rows if r["seq"] <= half_cut]
+        late = [r["index"] for r in rows if r["seq"] > half_cut]
+        rob[f"halves_{key}"] = {
+            "basis": "turn-adjusted index",
+            "halfCutSeq": half_cut,
             "earlyMedianLog2": median(early),
             "lateMedianLog2": median(late),
             "deltaLog2": (median(late) - median(early)) if early and late else None,
@@ -396,8 +512,8 @@ def main() -> int:
         rows = [r for r in main_rows if r["side"] == side]
         table = {}
         for t in TURNS_MAIN:
-            e = [r["y"] for r in rows if r["turn"] == t and r["seq"] <= 40]
-            l = [r["y"] for r in rows if r["turn"] == t and r["seq"] > 40]
+            e = [r["y"] for r in rows if r["turn"] == t and r["seq"] <= half_cut]
+            l = [r["y"] for r in rows if r["turn"] == t and r["seq"] > half_cut]
             if e and l:
                 table[str(t)] = {
                     "nEarly": len(e), "nLate": len(l),
@@ -413,8 +529,8 @@ def main() -> int:
         tmed = {t: median([r["y"] for r in rows if r["turn"] == t])
                 for t in sorted({r["turn"] for r in rows})}
         res = [(r["seq"], r["y"] - tmed[r["turn"]]) for r in rows]
-        early = [v for s, v in res if s <= 40]
-        late = [v for s, v in res if s > 40]
+        early = [v for s, v in res if s <= half_cut]
+        late = [v for s, v in res if s > half_cut]
         rob[f"residualQuantiles_{side}"] = {
             "early": {"p10": quantile(early, 0.1), "p50": quantile(early, 0.5),
                       "p90": quantile(early, 0.9)},
@@ -503,10 +619,11 @@ def main() -> int:
     rho_surv, p_surv = spearmanr(seqs, max_turns)
     n_main = [0 if g.get("meMeanLog2") is None else 1 for g in games]
     rob["composition"] = {
+        "halfCutSeq": half_cut,
         "survivalRhoVsSeq": float(rho_surv),
         "survivalP": float(p_surv),
-        "earlyMedianMaxTurn": median([g["maxTurn"] for g in games if g["seq"] <= 40]),
-        "lateMedianMaxTurn": median([g["maxTurn"] for g in games if g["seq"] > 40]),
+        "earlyMedianMaxTurn": median([g["maxTurn"] for g in games if g["seq"] <= half_cut]),
+        "lateMedianMaxTurn": median([g["maxTurn"] for g in games if g["seq"] > half_cut]),
         "nGamesWithMainBoards": int(sum(n_main)),
     }
 
@@ -517,7 +634,8 @@ def main() -> int:
         make_figures(result, boards, games, args.out / "figs", args.window)
 
     # console summary
-    print(json.dumps({
+    summary = {
+        "versions": result["versions"],
         "sample": result["sample"],
         "trends": {k: {kk: v[kk] for kk in ("n", "nGames", "pctPer10Games",
                                            "ci95PctPer10Games", "pBootstrap", "qBH",
@@ -529,7 +647,24 @@ def main() -> int:
                           if isinstance(vv, dict) and "pctPer10Games" in vv else vv)
                       for k, vv in result["intensity"].items()},
         "robustness": {k: v for k, v in result["robustness"].items() if "halves" in k},
-    }, ensure_ascii=False, indent=2))
+    }
+    if "extended" in result:
+        ext = result["extended"]
+        summary["extended"] = {}
+        for key in ("me", "opp", "intensity"):
+            if key not in ext:
+                continue
+            block = ext[key]
+            summary["extended"][key] = {
+                "trendWithVersionFE": {kk: block["trendWithVersionFE"][kk] for kk in
+                                       ("nGames", "pctPer10Games", "ci95PctPer10Games",
+                                        "pBootstrap")},
+                "versionEffect": block["versionEffect"],
+                "within": {v: {kk: w[kk] for kk in ("nGames", "pctPer10Games",
+                                                    "ci95PctPer10Games", "pBootstrap")}
+                           for v, w in block["within"].items()} if "within" in block else None,
+            }
+    print(json.dumps(summary, ensure_ascii=False, indent=2))
     return 0
 
 
@@ -562,6 +697,18 @@ def make_figures(result: dict, boards: list[dict], games: list[dict], fig_dir: P
         ax.set_xticklabels([d.strftime("%m-%d") for _, d in date_ticks], rotation=45,
                            ha="right", fontsize=fontsize)
 
+    versions_in_order: list[str] = []
+    for g in sorted(games, key=lambda x: x["seq"]):
+        v = g.get("version")
+        if v and v not in versions_in_order:
+            versions_in_order.append(v)
+    boundary_seqs = [min(g["seq"] for g in games if g.get("version") == v)
+                     for v in versions_in_order[1:]]
+    if len(versions_in_order) <= 1:
+        panel_label = f"现版本（BB {versions_in_order[0] if versions_in_order else '?'}）"
+    else:
+        panel_label = "模拟池（BB " + " + ".join(versions_in_order) + "）"
+
 
     # ---- Figure 1: small multiples t5-t12, me vs opponent + 10-game MA
     turns = [t for t in TURNS_MAIN if str(t) in result["series"].get("me", {})]
@@ -580,6 +727,8 @@ def make_figures(result: dict, boards: list[dict], games: list[dict], fig_dir: P
         ax.set_title(f"回合 {t}（n={len(result['series']['me'][str(t)]['seq'])}）", fontsize=10)
         ax.grid(alpha=0.25, lw=0.5)
         ax.set_xlim(0, max(g["seq"] for g in games) + 1)
+        for bseq in boundary_seqs:
+            ax.axvline(bseq - 0.5, color="#666666", ls=":", lw=1.0, alpha=0.8)
     for idx in range(len(turns), nrow * ncol):
         axes[idx // ncol][idx % ncol].axis("off")
     # date ticks on the bottom row panels only
@@ -590,8 +739,8 @@ def make_figures(result: dict, boards: list[dict], games: list[dict], fig_dir: P
         axes[i][0].set_ylabel("log2 X50")
     handles, labels = axes[0][0].get_legend_handles_labels()
     fig.legend(handles, labels, loc="upper center", ncol=4, frameon=False, bbox_to_anchor=(0.5, 0.99))
-    fig.suptitle(f"现版本（BB 1.88.6.0）分回合 X50 时序：我 vs 对手（细点=单板，粗线={window} 局"
-                 f"滑动均线，log2 域）", y=1.03, fontsize=12)
+    fig.suptitle(f"{panel_label}分回合 X50 时序：我 vs 对手（细点=单板，粗线={window} 局"
+                 f"滑动均线，log2 域；点线=版本切换）", y=1.03, fontsize=12)
     fig.tight_layout(rect=(0, 0, 1, 0.97))
     fig.savefig(fig_dir / "fig1_turns_me_vs_opp.png", dpi=150, bbox_inches="tight")
     plt.close(fig)
@@ -635,12 +784,30 @@ def make_figures(result: dict, boards: list[dict], games: list[dict], fig_dir: P
         ax.text(0.01, 0.02, "趋势（回合固定效应 + 按局聚类 bootstrap）：\n" + "\n".join(txt_lines),
                 transform=ax.transAxes, fontsize=8, va="bottom",
                 bbox=dict(boxstyle="round,pad=0.35", fc="white", ec="#cccccc", alpha=0.9))
+    for i, bseq in enumerate(boundary_seqs):
+        ax.axvline(bseq - 0.5, color="#666666", ls=":", lw=1.1, alpha=0.85,
+                   label="版本切换线" if i == 0 else None)
+    if "extended" in result:
+        step_lines = []
+        for key, nm in (("me", "我"), ("opp", "对手"), ("intensity", "强度")):
+            eff = (result["extended"].get(key) or {}).get("versionEffect") or {}
+            for val in eff.values():
+                if isinstance(val, dict) and "levelDiffPct" in val:
+                    step_lines.append(
+                        f"{nm}: 版本步进 {val['levelDiffPct']:+.1f}% "
+                        f"[{val['ci95LevelDiffPct'][0]:+.1f}, "
+                        f"{val['ci95LevelDiffPct'][1]:+.1f}], "
+                        f"q={val.get('qLevel', float('nan')):.2f}")
+        if step_lines:
+            ax.text(0.99, 0.02, "跨版本（较新 vs 较早；回合 + 趋势已控）：\n" + "\n".join(step_lines),
+                    transform=ax.transAxes, fontsize=8, va="bottom", ha="right",
+                    bbox=dict(boxstyle="round,pad=0.35", fc="white", ec="#cccccc", alpha=0.9))
     set_date_ticks(ax, fontsize=8)
     ax.set_xlabel("对局顺序号（按 gameId 时间升序；刻度为日期）")
     ax.set_ylabel("回合调整后的 log2 X50（跨回合可比）")
     ax.grid(alpha=0.25, lw=0.5)
-    ax.legend(ncol=3, frameon=False, fontsize=9, loc="upper left")
-    ax.set_title(f"现版本（BB 1.88.6.0）对局强度时序（{window} 局滑动均线；虚线=线性趋势）",
+    ax.legend(ncol=4, frameon=False, fontsize=9, loc="upper left")
+    ax.set_title(f"{panel_label}对局强度时序（{window} 局滑动均线；虚线=线性趋势）",
                  fontsize=11)
     fig.tight_layout()
     fig.savefig(fig_dir / "fig2_pooled_intensity.png", dpi=150, bbox_inches="tight")
@@ -670,7 +837,7 @@ def make_figures(result: dict, boards: list[dict], games: list[dict], fig_dir: P
     ax.set_ylabel("log2 X50")
     ax.grid(alpha=0.25, lw=0.5)
     ax.legend(frameon=False)
-    ax.set_title("现版本 X50 回合剖面（中位数与 IQR；t13 以后样本很少，仅示意）", fontsize=11)
+    ax.set_title(f"{panel_label} X50 回合剖面（中位数与 IQR；t13 以后样本很少，仅示意）", fontsize=11)
     fig.tight_layout()
     fig.savefig(fig_dir / "fig3_turn_profile.png", dpi=150, bbox_inches="tight")
     plt.close(fig)

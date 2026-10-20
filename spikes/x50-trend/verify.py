@@ -10,6 +10,7 @@ diff report; exits non-zero if any check exceeds tolerance.
 """
 from __future__ import annotations
 
+import argparse
 import json
 import math
 from pathlib import Path
@@ -20,9 +21,9 @@ REPO = Path(__file__).resolve().parents[2]
 OUT = REPO / "spikes/x50-trend/out"
 
 
-def load_boards() -> dict[str, list[dict]]:
+def load_boards(out: Path) -> dict[str, list[dict]]:
     by_side: dict[str, list[dict]] = {"me": [], "opp": []}
-    with (OUT / "boards.csv").open(encoding="utf-8") as f:
+    with (out / "boards.csv").open(encoding="utf-8") as f:
         header = f.readline().rstrip("\n").split(",")
         for line in f:
             p = line.rstrip("\n").split(",")
@@ -77,8 +78,11 @@ def bootstrap(rows: list[dict], B: int = 2000, seed: int = 20261020) -> np.ndarr
 
 
 def main() -> int:
-    analysis = json.loads((OUT / "analysis.json").read_text(encoding="utf-8"))
-    boards = load_boards()
+    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap.add_argument("--out", type=Path, default=OUT)
+    args = ap.parse_args()
+    analysis = json.loads((args.out / "analysis.json").read_text(encoding="utf-8"))
+    boards = load_boards(args.out)
     from scipy.stats import spearmanr
 
     problems: list[str] = []

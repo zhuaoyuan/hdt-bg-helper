@@ -65,22 +65,55 @@ def index_curves(curves: list[dict]) -> dict[str, dict]:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("--version", default="1.88.6.0",
-                    help="only keep games whose BB version equals this")
+    ap.add_argument("--version", default=None,
+                    help="(legacy) only keep games whose BB version equals this")
+    ap.add_argument("--versions", default=None,
+                    help="comma list of BB versions to keep, e.g. 1.85.0.0,1.88.6.0")
+    ap.add_argument("--pool", default=None,
+                    help="sim pool name; expands to its member versions (overrides --versions)")
+    ap.add_argument("--player-curves", type=Path, default=PLAYER_CURVES)
+    ap.add_argument("--opp-curves", type=Path, default=OPP_CURVES)
     ap.add_argument("--out", type=Path, default=OUT)
     args = ap.parse_args()
 
+    if args.pool:
+        import sys as _sys
+        _sys.path.insert(0, str(REPO / "tools"))
+        from strength.sim_pools import member_versions
+        versions = set(member_versions(args.pool))
+        label = f"pool {args.pool}"
+    elif args.versions:
+        versions = {v.strip() for v in args.versions.split(",") if v.strip()}
+        label = "versions " + ",".join(sorted(versions))
+    elif args.version:
+        versions = {args.version}
+        label = f"version {args.version}"
+    else:
+        versions = {"1.88.6.0"}
+        label = "version 1.88.6.0"
+    if not versions:
+        raise SystemExit("empty version filter")
+    args.out = Path(args.out).resolve()
+    args.player_curves = Path(args.player_curves).resolve()
+    args.opp_curves = Path(args.opp_curves).resolve()
+
     games = load_turns(TURNS)
-    cur_games = {g: v for g, v in games.items() if v["bbVersion"] == args.version}
+    cur_games = {g: v for g, v in games.items() if v["bbVersion"] in versions}
     if not cur_games:
-        raise SystemExit(f"no games with bbVersion={args.version}")
+        raise SystemExit(f"no games with {label}")
     gids = sorted(cur_games)
     seq = {gid: i for i, gid in enumerate(gids, start=1)}
+    version_of = {gid: cur_games[gid]["bbVersion"] for gid in gids}
+    # versions ordered by first appearance in time (for figures / interpretation)
+    ordered_versions = []
+    for gid in gids:
+        if version_of[gid] not in ordered_versions:
+            ordered_versions.append(version_of[gid])
 
-    player = index_curves(load_json(PLAYER_CURVES))
-    opp = index_curves(load_json(OPP_CURVES)) if OPP_CURVES.is_file() else {}
+    player = index_curves(load_json(args.player_curves))
+    opp = index_curves(load_json(args.opp_curves)) if args.opp_curves.is_file() else {}
     if not opp:
-        print(f"[warn] {OPP_CURVES} missing: building player-only table")
+        print(f"[warn] {args.opp_curves} missing: building player-only table")
 
     rows: list[dict] = []
     seen_boards: set[str] = set()
@@ -95,6 +128,7 @@ def main() -> int:
             rec = {
                 "boardId": board_id,
                 "gameId": gid,
+                "version": version_of[gid],
                 "seq": seq[gid],
                 "date": cur_games[gid]["date"],
                 "turn": turn,
@@ -121,7 +155,7 @@ def main() -> int:
     for r in rows:
         slot = by_game.setdefault(
             r["gameId"],
-            {"gameId": r["gameId"], "seq": r["seq"], "date": r["date"],
+            {"gameId": r["gameId"], "version": r["version"], "seq": r["seq"], "date": r["date"],
              "placement": cur_games[r["gameId"]]["placement"],
              "maxTurn": cur_games[r["gameId"]]["maxTurn"]},
         )
@@ -130,7 +164,8 @@ def main() -> int:
             slot.setdefault("_opp", []).append(r["log2x50"] if r["side"] == "opp" else None)
     game_rows: list[dict] = []
     for gid in gids:
-        slot = by_game.get(gid, {"gameId": gid, "seq": seq[gid], "date": cur_games[gid]["date"],
+        slot = by_game.get(gid, {"gameId": gid, "version": version_of[gid], "seq": seq[gid],
+                                 "date": cur_games[gid]["date"],
                                  "placement": cur_games[gid]["placement"],
                                  "maxTurn": cur_games[gid]["maxTurn"]})
         me = [v for v in slot.get("_me", []) if v is not None]
@@ -138,6 +173,7 @@ def main() -> int:
         game_rows.append(
             {
                 "gameId": gid,
+                "version": version_of[gid],
                 "seq": seq[gid],
                 "date": cur_games[gid]["date"],
                 "placement": cur_games[gid]["placement"],
@@ -169,18 +205,45 @@ def main() -> int:
         for r in game_rows:
             f.write(",".join(fmt(r[k]) for k in game_fields) + "\n")
 
+    version_boundaries = []
+    for i in range(1, len(ordered_versions)):
+        v = ordered_versions[i]
+        first_seq = next(s for s in range(1, len(gids) + 1) if version_of[gids[s - 1]] == v)
+        version_boundaries.append({
+            "from": ordered_versions[i - 1], "to": v, "seq": first_seq,
+            "prevLastGame": gids[first_seq - 2] if first_seq > 1 else None,
+            "nextFirstGame": gids[first_seq - 1],
+        })
     manifest = {
-        "version": args.version,
-        "playerCurves": str(PLAYER_CURVES.relative_to(REPO)),
-        "oppCurves": str(OPP_CURVES.relative_to(REPO)) if opp else None,
-        "games": len(gids),
-        "boards": len(rows),
-        "boardsBySide": {s: sum(1 for r in rows if r["side"] == s) for s in ("me", "opp")},
+        "filter": label,
+        "versions": ordered_versions,
+        "gamesByVersion": {v: sum(1 for g in gids if version_of[g] == v)
+                           for v in ordered_versions},
+        "boardsByVersionSide": {
+            v: {s: sum(1 for r in rows if r["side"] == s and r["version"] == v)
+                for s in ("me", "opp")}
+            for v in ordered_versions
+        },
         "interiorBySideTurn": {
             s: {str(t): sum(1 for r in rows if r["side"] == s and r["interior"] and r["turn"] == t)
                 for t in range(1, 18)}
             for s in ("me", "opp")
         },
+        "interiorByVersionSideTurn": {
+            v: {
+                s: {str(t): sum(1 for r in rows if r["version"] == v and r["side"] == s
+                                and r["interior"] and r["turn"] == t)
+                    for t in range(1, 18)}
+                for s in ("me", "opp")
+            }
+            for v in ordered_versions
+        },
+        "versionBoundaries": version_boundaries,
+        "playerCurves": str(args.player_curves.relative_to(REPO)),
+        "oppCurves": str(args.opp_curves.relative_to(REPO)) if opp else None,
+        "games": len(gids),
+        "boards": len(rows),
+        "boardsBySide": {s: sum(1 for r in rows if r["side"] == s) for s in ("me", "opp")},
         "firstGame": gids[0],
         "lastGame": gids[-1],
         "dates": sorted({r["date"] for r in game_rows}),
